@@ -1,0 +1,23 @@
+services:
+  app:
+    build: .
+    environment:
+      ENVIRONMENT: dev
+      LOG_LEVEL: INFO
+    volumes:
+      - sqlite-data:/data
+
+  # Not yet used by the app (MVP persists to a SQLite volume) — defined ahead of the
+  # V2 PostgreSQL migration (see docs/roadmap.md) so the compose topology is stable.
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: real_estate
+      POSTGRES_PASSWORD: real_estate
+      POSTGRES_DB: real_estate
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  sqlite-data:
+  postgres-data:
