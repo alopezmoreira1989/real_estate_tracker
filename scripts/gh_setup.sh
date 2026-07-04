@@ -268,7 +268,7 @@ ci "NormalizerRegistry + base normalizer composition (4 steps)" "Phase 4: Normal
 **Complexity**: M  ·  **Order**: 20"
 
 ci "Vocabulary dictionaries (property/land type, province->INE) as Python dicts" "Phase 4: Normalization" "epic:normalization,type:feature,complexity:M,priority:mvp" \
-"**Description**: Typed dict mapping tables per ADR-011 (doc 05 §3).
+"**Description**: Typed dict mapping tables per ADR-015 (doc 05 §3).
 
 **Acceptance Criteria**
 - [ ] Coverage tests: known portal terms map to non-OTHER canonical values
@@ -300,7 +300,7 @@ ci "BaseScraper + httpx client, rate limiter, tenacity retry, circuit breaker" "
 **Complexity**: M  ·  **Order**: 23"
 
 ci "IdealistaScraper -> RawListing (BeautifulSoup; Playwright only if required)" "Phase 5: Idealista Scraper & Search" "epic:scrapers,type:feature,complexity:L,priority:mvp" \
-"**Description**: First concrete scraper per ADR-010.
+"**Description**: First concrete scraper per ADR-004.
 
 **Acceptance Criteria**
 - [ ] Produces RawListing without cleaning
