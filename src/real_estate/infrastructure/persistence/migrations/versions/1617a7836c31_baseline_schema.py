@@ -1,8 +1,8 @@
 """baseline schema
 
-Revision ID: b4241f060c13
+Revision ID: 1617a7836c31
 Revises:
-Create Date: 2026-07-04 20:37:45.316465
+Create Date: 2026-07-04 20:41:05.560083
 """
 
 from collections.abc import Sequence
@@ -11,7 +11,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision: str = "b4241f060c13"
+revision: str = "1617a7836c31"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -39,6 +39,7 @@ def upgrade() -> None:
         sa.Column("land_type", sa.String(length=24), nullable=True),
         sa.Column("province_ine", sa.String(length=2), nullable=False),
         sa.Column("municipality_ine", sa.String(length=5), nullable=True),
+        sa.Column("municipality_name", sa.String(length=200), nullable=True),
         sa.Column("district", sa.String(length=120), nullable=True),
         sa.Column("postal_code", sa.String(length=5), nullable=True),
         sa.Column("lat", sa.Numeric(precision=9, scale=6), nullable=True),
@@ -52,6 +53,7 @@ def upgrade() -> None:
         sa.Column("bathrooms", sa.Integer(), nullable=True),
         sa.Column("features", sa.JSON(), nullable=False),
         sa.Column("attributes", sa.JSON(), nullable=False),
+        sa.Column("media", sa.JSON(), nullable=False),
         sa.Column("title", sa.String(length=500), nullable=False),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("status", sa.String(length=16), nullable=False),

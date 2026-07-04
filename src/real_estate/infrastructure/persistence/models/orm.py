@@ -8,6 +8,7 @@ PostgreSQL, CHAR on SQLite) and JSON columns use ``JSON`` (JSONB on PostgreSQL).
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -131,19 +132,21 @@ class PropertyModel(Base):
     land_type: Mapped[str | None] = mapped_column(String(24), nullable=True)
     province_ine: Mapped[str] = mapped_column(String(2))
     municipality_ine: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    municipality_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     district: Mapped[str | None] = mapped_column(String(120), nullable=True)
     postal_code: Mapped[str | None] = mapped_column(String(5), nullable=True)
-    lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
-    lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
-    price_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True)
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    lng: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    price_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
     price_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
-    area_m2: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
-    plot_area_m2: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
-    price_per_m2: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    area_m2: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    plot_area_m2: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    price_per_m2: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     rooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bathrooms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     features: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     attributes: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    media: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     title: Mapped[str] = mapped_column(String(500))
     description: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(16), default="UNKNOWN")
@@ -172,7 +175,7 @@ class PriceHistoryModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
     property_id: Mapped[UUID] = mapped_column(ForeignKey("properties.id", ondelete="CASCADE"))
-    price_amount: Mapped[float] = mapped_column(Numeric(14, 2))
+    price_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     price_currency: Mapped[str] = mapped_column(String(3))
     observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
