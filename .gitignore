@@ -9,5 +9,6 @@ venv/
 .pytest_cache/
 htmlcov/
 .coverage
+coverage.xml
 dist/
 build/
