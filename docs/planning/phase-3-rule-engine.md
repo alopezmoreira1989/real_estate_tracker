@@ -1,7 +1,8 @@
 # Phase 3 Plan — Rule Engine (Issues #12–#17)
 
-> Status: **Awaiting approval** · Branch: `dev_alm` · Depends on: Phase 2 (merged)
+> Status: **Implemented on `dev_alm` — PR to `main` pending approval** · Depends on: Phase 2 (merged)
 > Design reference: [../architecture/04-alert-rule-engine.md](../architecture/04-alert-rule-engine.md)
+> Handoff / current state: see the last section of this doc.
 
 ## Goal
 
@@ -98,3 +99,41 @@ src/real_estate/domain/model/
 - Match persistence / `MatchRepository` and idempotent writes → Phase 5 (#27–#28).
 - Keyword filters pushed to DB FTS → V2 (ADR-012); MVP evaluates in Python.
 - `WITHIN_RADIUS` / geo operators → V3.
+
+---
+
+## Handoff — state as of 2026-07-05 (stopped mid-phase by request)
+
+### Done (all committed + pushed to `dev_alm`, CI/gate green)
+All Phase 3 **code is complete**. Full gate green locally: ruff, black,
+mypy --strict (60 files), import-linter (4/4, domain still framework-free),
+**108 tests passing**, ~93% coverage.
+
+| Issue | Commit | What landed |
+|-------|--------|-------------|
+| #14 | operator strategies | `domain/rules/operators.py` — `OperatorStrategy` + all operators, accent/case folding, tri-state None, `strategy_for()` |
+| #13 | field registry | `domain/rules/field_registry.py` — `FieldType`, `FieldDescriptor`, `FieldRegistry`, `default_registry()` |
+| #12 | specification | `domain/rules/specification.py` — `Specification` + And/Or/Not + `FieldSpecification` |
+| #15 | factory | `domain/rules/factory.py` — `SpecificationFactory.build(alert)`; `domain/rules/__init__.py` exports |
+| #16 | engine | `domain/model/match.py` (`AlertMatch`, `MatchStatus`), `domain/services/alert_engine.py` (`AlertEngine`) |
+| #17 | tests | golden "Urbanizable land in Pontevedra" fixture + Hypothesis laws; `hypothesis` added to dev deps |
+
+GitHub issues #12–#17 remain **OPEN** (they auto-close when `dev_alm` merges to
+`main`).
+
+### Left to do (the only remaining Phase 3 step)
+1. **Open PR `dev_alm → main`** for Phase 3 and merge after CI is green — this
+   was intentionally paused for user approval. `dev_alm` is ahead of `main` by
+   the Phase 3 commits. On merge, issues #12–#17 close.
+   - Suggested PR title: `Phase 3: Rule Engine (#12–#17)`.
+   - Body should `Closes #12 … #17`.
+
+### Resume checklist for next session
+- `source .venv/Scripts/activate`; gate: `pre-commit run --all-files` (or run
+  ruff/black/mypy/lint-imports/pytest individually).
+- Then start **Phase 4 — Normalization** (#18 `RawListing`/`NormalizationResult`
+  → #22 golden fixtures). The `Normalizer` port and `RawListing` DTO already
+  exist from Phase 2 (`domain/ports/`); the field registry + vocabularies from
+  Phases 2–3 are the normalization targets.
+- Reminder: `AlertEngine` is pure and returns candidate `AlertMatch`es;
+  persistence/idempotency wiring is Phase 5 (#28).
