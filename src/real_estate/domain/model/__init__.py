@@ -22,6 +22,7 @@ from real_estate.domain.model.identifiers import (
     UserId,
 )
 from real_estate.domain.model.location import GeoPoint, Location
+from real_estate.domain.model.match import AlertMatch, MatchStatus
 from real_estate.domain.model.media import Media
 from real_estate.domain.model.money import Money
 from real_estate.domain.model.property import Property
@@ -29,6 +30,7 @@ from real_estate.domain.model.property import Property
 __all__ = [
     "AlertCondition",
     "AlertId",
+    "AlertMatch",
     "Area",
     "ConditionId",
     "ConditionValue",
@@ -37,6 +39,7 @@ __all__ = [
     "GroupOperator",
     "Location",
     "MatchId",
+    "MatchStatus",
     "Media",
     "Money",
     "Operator",
