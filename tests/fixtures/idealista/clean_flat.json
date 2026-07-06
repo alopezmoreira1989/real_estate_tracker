@@ -1,0 +1,25 @@
+{
+  "external_id": "11111111",
+  "url": "https://www.idealista.com/inmueble/11111111/",
+  "raw": {
+    "precio": "185.000 €",
+    "superficie": "90 m²",
+    "habitaciones": "3",
+    "banos": "2",
+    "tipo": "Piso",
+    "operacion": "Venta",
+    "provincia": "Pontevedra",
+    "titulo": "Piso reformado en el centro",
+    "descripcion": "Piso luminoso con ascensor y terraza, cerca de la playa.",
+    "ascensor": "Sí",
+    "terraza": "Sí",
+    "jardin": "No",
+    "parking": "No",
+    "piscina": "No",
+    "obra_nueva": "No",
+    "imagenes": [
+      "https://img.idealista.com/11111111/1.jpg",
+      "https://img.idealista.com/11111111/2.jpg"
+    ]
+  }
+}
