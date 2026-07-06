@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Architecture questions
+    url: https://github.com/alopezmoreira1989/real_estate_tracker/tree/main/docs/architecture
+    about: Read the design docs and ADRs before asking — most "why" questions are answered there.

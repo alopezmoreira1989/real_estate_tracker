@@ -7,8 +7,12 @@ venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.import_linter_cache/
 htmlcov/
 .coverage
 coverage.xml
 dist/
 build/
+
+# Local Claude Code state (settings.local.json, task locks) — not shared config
+.claude/

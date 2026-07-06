@@ -24,6 +24,38 @@ Goal: a professional skeleton that enforces the architecture.
 
 ---
 
+## Phase 1.5 — Project hardening  *(epics: arch, docs, testing, deploy)* — ✅ **Complete**
+
+Goal: make the repository itself production-quality — documentation, architecture decision records,
+developer experience, and CI/tooling polish only. This phase itself added no entities, repositories,
+ORM models, scrapers, or business logic. It was carried out while Phase 2 (Domain & Persistence) was
+being merged and Phase 3 (Rule Engine) was independently developed on `dev_alm`; this phase's own
+scope stayed strictly non-functional regardless.
+
+- Split `docs/architecture/decisions.md` into 17 individual ADRs under `docs/architecture/adr/`
+  (7 newly documented foundational decisions + 10 prior decisions preserved and renumbered), with
+  every cross-reference in `CLAUDE.md`, this roadmap, and `scripts/gh_setup.sh` updated to match.
+- Added system diagrams (`09-diagrams.md`) and an architectural risk/future-proofing assessment
+  (`10-future-proofing.md`) for new portals, notification channels, a REST API, a web UI, auth,
+  Docker/cloud deployment, and multi-user support.
+- Rewrote the root `README.md` as a full project overview; added `CONTRIBUTING.md`,
+  `CODE_OF_CONDUCT.md`, `SECURITY.md`, `DEVELOPMENT.md`, and an MIT `LICENSE`.
+- Hardened `import-linter`: added a contract forbidding the domain from importing third-party
+  frameworks directly (not just internal layers), with every contract's rationale documented inline
+  in `pyproject.toml`.
+- Added GitHub issue templates (bug/feature/question) and a pull request template; expanded
+  `docs/planning/README.md` with full label documentation, a Project-board usage guide, and the
+  release process.
+- Commented `pyproject.toml` and `.pre-commit-config.yaml` tool configuration; fixed CI's pip
+  caching (`cache-dependency-path`) and split workflow steps for per-tool failure attribution.
+- Repository polish: confirmed every placeholder package is roadmap-justified, tightened
+  `.gitignore` (import-linter cache, local Claude Code state).
+
+**Exit:** all quality gates (ruff/black/mypy --strict/import-linter/pytest) green; every
+documentation cross-reference verified to resolve; no business logic introduced.
+
+---
+
 ## Phase 2 — Domain core: model, vocabularies, persistence  *(epics: db, arch, testing)*
 
 - Value objects: `Money`, `Area`, `PricePerM2`, `Location`, `GeoPoint`, `Features`, `Media`. **M**
@@ -65,7 +97,8 @@ Goal: a professional skeleton that enforces the architecture.
 ## Phase 5 — First scraper (Idealista) + Search planning  *(epics: scrapers, scheduler)*
 
 - `BaseScraper` + httpx client, rate limiter, `tenacity` retry, circuit breaker. **M**
-- `IdealistaScraper` → `RawListing` (per ADR-010: BeautifulSoup; Playwright only if required). **L**
+- `IdealistaScraper` → `RawListing` (per [ADR-004](architecture/adr/004-playwright-for-scraping.md):
+  BeautifulSoup; Playwright only if required). **L**
 - Portal `capabilities` config (pushable fields, limits). **S**
 - `SearchPlanner`: split pushable/client-side, canonical signature, dedup. **M**
 - `SearchCache` + `SearchExecution` write path; property upsert + `PriceHistory`. **M**
@@ -117,16 +150,19 @@ verification on `dev_alm`.
 
 - Additional scrapers: Fotocasa, Pisos.com, Habitaclia, Milanuncios (each = scraper + normalizer +
   mapping tables + fixtures). *(scrapers, normalization)*
-- **Cross-portal dedup** enabled via `fingerprint` + backfill (ADR-008). *(db, perf)*
+- **Cross-portal dedup** enabled via `fingerprint` + backfill
+  ([ADR-013](architecture/adr/013-defer-cross-portal-dedup.md)). *(db, perf)*
 - **FastAPI** for programmatic alert management; auth scaffolding. *(api)*
 - Email + Discord notifiers. *(notifications)*
-- PostgreSQL migration; JSONB/GIN attribute indexes; FTS keyword push-down (ADR-012). *(db, perf)*
+- PostgreSQL migration; JSONB/GIN attribute indexes; FTS keyword push-down
+  ([ADR-016](architecture/adr/016-keyword-contains-python-then-db-fts.md)). *(db, perf)*
 - Query **widening/superset** dedup optimization (doc 06 §2). *(perf, scheduler)*
 
 ## Version 3 — product & scale
 
 - Multi-user sign-up, per-user quotas & fairness (doc 06 §6). *(api, arch)*
-- Full boolean condition builder in UI (OR/NOT groups — ADR-009). *(frontend, rule-engine)*
+- Full boolean condition builder in UI (OR/NOT groups —
+  [ADR-014](architecture/adr/014-condition-tree-and-only-mvp-ui.md)). *(frontend, rule-engine)*
 - Price-drop / market-trend alerts from `PriceHistory`; saved-search analytics. *(rule-engine, perf)*
 - Geo radius filters (`WITHIN_RADIUS`), map view. *(rule-engine, frontend)*
 - WhatsApp & push channels; notification digests. *(notifications)*
@@ -136,7 +172,7 @@ verification on `dev_alm`.
 
 ## Recommended implementation order (one line)
 
-`Phase 1 → 2 → 3 → 4 → 5 → 6 → 7 (MVP) → 8 → V2 → V3`
+`Phase 1 → 1.5 → 2 → 3 → 4 → 5 → 6 → 7 (MVP) → 8 → V2 → V3`
 
 Rule Engine (3) and Normalization (4) are independent of each other and can be parallelized after
 Phase 2; both must precede Phase 5.

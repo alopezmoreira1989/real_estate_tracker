@@ -3,7 +3,8 @@
 Guidance for Claude Code (and humans) working in this repository. **Read this before writing code.**
 It defines how the Real Estate Alert Platform is built and how it must evolve. When in doubt, follow
 this file and the design docs in [docs/architecture/](docs/architecture/); if you must deviate,
-record an ADR in [docs/architecture/decisions.md](docs/architecture/decisions.md).
+record an ADR in [docs/architecture/adr/](docs/architecture/adr/) (see
+[template.md](docs/architecture/adr/template.md)).
 
 ---
 
@@ -100,7 +101,8 @@ Full map + per-folder responsibility table:
 - **KISS** — the simplest design that satisfies the drivers. Patterns are applied only where they
   earn maintainability (each engine doc records the *rejected simpler alternative* and why).
 - **YAGNI** — build for the current phase (see roadmap); the architecture leaves seams for the
-  future without pre-building it (e.g. condition tree modeled now, AND-only UI shipped — ADR-009).
+  future without pre-building it (e.g. condition tree modeled now, AND-only UI shipped —
+  [ADR-014](docs/architecture/adr/014-condition-tree-and-only-mvp-ui.md)).
 
 ---
 
@@ -182,8 +184,9 @@ import-linter, tests) must pass. Merges to `main` only from `dev_alm`.
 
 ## 10. Documentation standards
 
-- Architecture decisions → an ADR row in
-  [decisions.md](docs/architecture/decisions.md); design changes update the relevant `0x-*.md`.
+- Architecture decisions → a new file in [docs/architecture/adr/](docs/architecture/adr/), numbered
+  and named per [template.md](docs/architecture/adr/template.md); design changes update the relevant
+  `0x-*.md` and add a link to/from the new ADR.
 - Every design doc carries **Status / Owner / Depends on** and records the **rejected alternative**.
 - Public domain concepts are documented where defined; keep this `CLAUDE.md` current when a
   convention changes — it is the source of truth loaded every session.

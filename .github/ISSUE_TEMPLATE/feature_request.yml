@@ -1,0 +1,60 @@
+name: Feature request
+description: Propose new functionality — a new field, portal, notification channel, etc.
+title: "feat: <short summary>"
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: check [docs/roadmap.md](../../docs/roadmap.md) — this may already be planned
+        for a specific phase, in which case a comment on the roadmap or an existing milestone issue
+        is more useful than a new issue.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The gap or friction this feature addresses — not the solution yet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >
+        How you'd approach it. If it's a new alert field, which FieldDescriptor; if a new portal,
+        which scraper/normalizer; if a new channel, which Notifier — see CLAUDE.md §2 for where new
+        code belongs.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: epic
+    attributes:
+      label: Epic
+      description: See docs/planning/README.md for the epic label list.
+      options:
+        - arch
+        - db
+        - rule-engine
+        - normalization
+        - scrapers
+        - notifications
+        - scheduler
+        - api
+        - frontend
+        - deploy
+        - testing
+        - docs
+        - perf
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Simpler approaches you rejected, and why (mirrors the ADR format this repo uses).
+    validations:
+      required: false

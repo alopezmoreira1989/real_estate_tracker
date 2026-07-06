@@ -5,8 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "real_estate"
 version = "0.1.0"
-description = "Real Estate Alert Platform"
+description = "Real Estate Alert Platform — monitors Spanish real-estate portals and notifies on matching alerts"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Alejandro Lopez Moreira" }]
 requires-python = ">=3.12"
+# Runtime dependencies only. Kept deliberately small: the domain layer has zero third-party
+# dependencies (enforced below by import-linter), so everything here belongs to infrastructure.
 dependencies = [
     "pydantic-settings>=2.4",
     "structlog>=24.4",
@@ -14,6 +19,12 @@ dependencies = [
     "alembic>=1.13",
 ]
 
+[project.urls]
+Repository = "https://github.com/alopezmoreira1989/real_estate_tracker"
+Documentation = "https://github.com/alopezmoreira1989/real_estate_tracker/tree/main/docs"
+
+# Dev-only tooling (lint/format/type-check/test/architecture enforcement). Never imported by
+# runtime code — see ADR-007 for why this is a pip extra rather than a Poetry dev-group.
 [project.optional-dependencies]
 dev = [
     "ruff>=0.6",
@@ -21,6 +32,7 @@ dev = [
     "mypy>=1.11",
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "hypothesis>=6.0",
     "import-linter>=2.0",
     "pre-commit>=3.8",
 ]
@@ -28,6 +40,9 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# ---------------------------------------------------------------------------
+# Lint (ruff) — see CLAUDE.md §4 for the coding standards this enforces.
+# ---------------------------------------------------------------------------
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -36,15 +51,24 @@ src = ["src"]
 extend-exclude = ["src/real_estate/infrastructure/persistence/migrations/versions"]
 
 [tool.ruff.lint]
+# E/F: pyflakes + pycodestyle errors. I: import sorting (replaces isort). UP: pyupgrade (modern
+# syntax, e.g. StrEnum over str+Enum). B: bugbear (common bug patterns). SIM: simplification
+# suggestions. N: PEP 8 naming conventions (CLAUDE.md §4 naming rules).
 select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["real_estate"]
 
+# ---------------------------------------------------------------------------
+# Format (black) — authoritative; do not hand-format around it (CLAUDE.md §4).
+# ---------------------------------------------------------------------------
 [tool.black]
 line-length = 100
 target-version = ["py312"]
 
+# ---------------------------------------------------------------------------
+# Types (mypy --strict) — CLAUDE.md §4: full type hints everywhere, strict mode must pass.
+# ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.12"
 strict = true
@@ -54,6 +78,9 @@ files = ["src"]
 # Alembic migration environment/scripts are operational, not type-checked.
 exclude = ["persistence/migrations/"]
 
+# ---------------------------------------------------------------------------
+# Tests (pytest + coverage) — CLAUDE.md §8: unit/integration/e2e pyramid, mirrors src/ path-for-path.
+# ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-ra --strict-markers --cov=real_estate --cov-report=term-missing"
@@ -64,11 +91,19 @@ pythonpath = ["src"]
 source = ["src/real_estate"]
 branch = true
 
+# ---------------------------------------------------------------------------
+# Architecture boundary enforcement (import-linter) — see ADR-006 for why this exists as automated
+# CI enforcement rather than review discipline. Each contract below states, and documents the
+# reason for, one edge of the dependency rule from CLAUDE.md §6 / docs/architecture/01-architecture.md §3.
+# ---------------------------------------------------------------------------
 [tool.importlinter]
 root_package = "real_estate"
+# Required for the third-party-forbidding contract below to see imports of packages outside
+# `real_estate` itself (import-linter otherwise only analyzes internal-to-root-package imports).
+include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "Domain imports nothing but the standard library"
+name = "Domain does not depend on the outer layers"
 type = "forbidden"
 source_modules = ["real_estate.domain"]
 forbidden_modules = [
@@ -76,6 +111,34 @@ forbidden_modules = [
     "real_estate.infrastructure",
     "real_estate.presentation",
 ]
+# Why: the domain is the one layer every other layer depends on (ADR-001). If it depended back on
+# any of them, changing infrastructure (e.g. swapping SQLite for Postgres) could break domain
+# invariants, and the domain could no longer be tested without their I/O.
+
+[[tool.importlinter.contracts]]
+name = "Domain does not depend on third-party frameworks"
+type = "forbidden"
+source_modules = ["real_estate.domain"]
+forbidden_modules = [
+    "sqlalchemy",
+    "alembic",
+    "pydantic",
+    "pydantic_settings",
+    "structlog",
+    "httpx",
+    "bs4",
+    "playwright",
+    "telegram",
+    "apscheduler",
+    "tenacity",
+    "fastapi",
+    "typer",
+    "streamlit",
+]
+# Why: CLAUDE.md §2 requires the domain to import "nothing but the standard library" — this is
+# that rule checked by machine instead of trusted by convention. The list is every framework any
+# other layer is expected to use (docs/architecture/01-architecture.md §7); extend it whenever a
+# new infrastructure dependency is added to [project.dependencies]/[project.optional-dependencies].
 
 [[tool.importlinter.contracts]]
 name = "Application depends on domain only"
@@ -85,6 +148,8 @@ forbidden_modules = [
     "real_estate.infrastructure",
     "real_estate.presentation",
 ]
+# Why: application orchestrates use-cases against domain ports (ADR-001); it must stay swappable
+# and infrastructure-agnostic, and must never call back into the presentation layer that invoked it.
 
 [[tool.importlinter.contracts]]
 name = "Presentation never reaches into infrastructure directly"
@@ -93,6 +158,9 @@ source_modules = ["real_estate.presentation"]
 forbidden_modules = [
     "real_estate.infrastructure",
 ]
+# Why: presentation (CLI/API/web) must go through application use-cases, never call a concrete
+# adapter directly — otherwise it silently bypasses the composition root's dependency injection and
+# couples an entry point to one specific infrastructure implementation.
 
 [[tool.importlinter.contracts]]
 name = "Infrastructure never reaches into presentation"
@@ -101,3 +169,6 @@ source_modules = ["real_estate.infrastructure"]
 forbidden_modules = [
     "real_estate.presentation",
 ]
+# Why: adapters (repositories, scrapers, notifiers) are consumed by application/presentation, never
+# the reverse — an infrastructure module importing presentation would be a circular, inside-out
+# dependency with no legitimate use case.

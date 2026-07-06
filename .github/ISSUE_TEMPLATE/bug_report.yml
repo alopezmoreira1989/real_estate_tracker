@@ -1,0 +1,63 @@
+name: Bug report
+description: Something is broken — a normalizer, the rule engine, a scraper, CI, etc.
+title: "fix: <short summary>"
+labels: ["type:chore"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Include the exact error/traceback if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps (or a failing test) that reproduce it.
+      placeholder: |
+        1. Run `pytest tests/...`
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit / branch
+      description: Which commit or branch were you on?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Affected layer
+      description: See docs/architecture/07-folder-structure.md if unsure.
+      options:
+        - domain
+        - application
+        - infrastructure
+        - presentation
+        - tooling/CI
+        - docs
+        - unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, related issues/ADRs — anything that helps diagnose it.
+    validations:
+      required: false
