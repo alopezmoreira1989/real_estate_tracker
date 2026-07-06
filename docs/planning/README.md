@@ -46,9 +46,9 @@ description, acceptance criteria, dependencies, complexity, and a suggested orde
 | Milestone | Issues | Theme |
 |-----------|--------|-------|
 | Phase 1: Foundation & Tooling | #1–#5 | skeleton, tooling, CI, Docker |
-| Phase 1.5: Project Hardening | (tracking issue) | ADRs, diagrams, README, DX docs, CI/tooling polish — no business logic |
 | Phase 2: Domain & Persistence | #6–#11 | VOs, vocab, aggregates, ORM, repos |
-| Phase 3: Rule Engine | #12–#17 | Specification, registry, operators, factory, engine |
+| Phase 1.5: Project Hardening | #39 | ADRs, diagrams, README, DX docs, CI/tooling polish — no business logic; developed alongside Phase 2/3 |
+| Phase 3: Rule Engine | #12–#17 | Specification, registry, operators, factory, engine — code-complete on `dev_alm`, PR pending |
 | Phase 4: Normalization | #18–#22 | RawListing→Property, parsers, vocab dicts |
 | Phase 5: Idealista Scraper & Search | #23–#28 | scraper, capabilities, planner, cache, RunAlertCycle |
 | Phase 6: Telegram Notifications | #29–#31 | outbox, notifier, dispatcher |

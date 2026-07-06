@@ -44,16 +44,23 @@ cross-site alerting. This project exists to:
 ### Implemented
 
 - ✅ Clean/hexagonal project skeleton (`domain` / `application` / `infrastructure` / `presentation`)
-  with the dependency rule enforced in CI (import-linter).
+  with the dependency rule enforced in CI (import-linter), including a contract forbidding the
+  domain from importing third-party frameworks directly.
 - ✅ Full quality toolchain: `ruff`, `black`, `mypy --strict`, `pytest` + coverage, pre-commit.
 - ✅ Structured logging (`structlog`) and typed settings (`pydantic-settings`).
 - ✅ GitHub Actions CI (lint, type-check, import boundaries, tests, Docker build/compose smoke test).
 - ✅ Multi-stage Docker image + `docker-compose.yml` (app + a Postgres service defined ahead of V2).
+- ✅ Canonical domain model: value objects (`Money`, `Area`, `Location`, `Features`, …), controlled
+  vocabularies (INE-keyed geography, property/land/listing types), the `Property` entity and
+  `SearchAlert` aggregate, and domain ports (Phase 2).
+- ✅ SQLAlchemy ORM schema + Alembic baseline migration, and repository/Unit-of-Work
+  implementations with integration tests (Phase 2).
+- ✅ Specification-based Rule Engine: operator strategies, field registry, `SpecificationFactory`,
+  and a pure `AlertEngine`, including the "Urbanizable land in Pontevedra" golden fixture and
+  Hypothesis property-based tests (Phase 3) — implemented on `dev_alm`, pending its own PR/merge.
 
 ### Planned (see [Roadmap](#roadmap))
 
-- ⏳ Canonical domain model, value objects, and controlled vocabularies (Phase 2)
-- ⏳ Specification-based Rule Engine with a pluggable field registry (Phase 3)
 - ⏳ Per-portal normalization pipeline (Phase 4)
 - ⏳ Idealista scraper + deduplicated search planning (Phase 5)
 - ⏳ Telegram notifications via an outbox (Phase 6)
@@ -231,9 +238,10 @@ phase is a GitHub milestone; issues carry `epic:*`/`type:*`/`complexity:*` label
 
 ```mermaid
 flowchart LR
-    P1["Phase 1\nFoundation & Tooling ✅"] --> P15["Phase 1.5\nProject Hardening ✅"]
-    P15 --> P2["Phase 2\nDomain & Persistence"]
-    P2 --> P3["Phase 3\nRule Engine"]
+    P1["Phase 1\nFoundation & Tooling ✅"] --> P2["Phase 2\nDomain & Persistence ✅"]
+    P2 --> P15["Phase 1.5\nProject Hardening ✅"]
+    P2 --> P3["Phase 3\nRule Engine 🔄 PR pending"]
+    P15 --> P4
     P3 --> P4["Phase 4\nNormalization"]
     P4 --> P5["Phase 5\nScraper & Search"]
     P5 --> P6["Phase 6\nNotifications"]
@@ -245,10 +253,13 @@ flowchart LR
 
 ## Current project status
 
-**Phase 1.5 complete** — the skeleton, tooling, CI, Docker, and documentation are hardened; no
-domain/business logic exists yet by design. **Phase 2 (Domain & Persistence) is next.** See the
-[GitHub milestones](https://github.com/alopezmoreira1989/real_estate_tracker/milestones) for
-issue-level status.
+**Phase 1 and Phase 2 are merged to `main`.** **Phase 1.5** (this hardening pass — documentation,
+ADRs, DX, tooling polish; no business logic) is complete on `dev_alm`. **Phase 3 (Rule Engine)** was
+developed concurrently and is code-complete on `dev_alm` (operator strategies, field registry,
+Specification pattern, `AlertEngine`, golden fixture + property-based tests) pending its own PR/merge
+review — it is not part of this hardening pass. **Phase 4 (Normalization) is next** once Phase 3
+lands. See the [GitHub milestones](https://github.com/alopezmoreira1989/real_estate_tracker/milestones)
+for issue-level status.
 
 ## Future phases
 

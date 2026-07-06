@@ -26,9 +26,11 @@ Goal: a professional skeleton that enforces the architecture.
 
 ## Phase 1.5 — Project hardening  *(epics: arch, docs, testing, deploy)* — ✅ **Complete**
 
-Goal: make the repository itself production-quality before any domain/business logic exists —
-documentation, architecture decision records, developer experience, and CI/tooling polish only. No
-entities, repositories, ORM models, scrapers, or business logic were added in this phase.
+Goal: make the repository itself production-quality — documentation, architecture decision records,
+developer experience, and CI/tooling polish only. This phase itself added no entities, repositories,
+ORM models, scrapers, or business logic. It was carried out while Phase 2 (Domain & Persistence) was
+being merged and Phase 3 (Rule Engine) was independently developed on `dev_alm`; this phase's own
+scope stayed strictly non-functional regardless.
 
 - Split `docs/architecture/decisions.md` into 17 individual ADRs under `docs/architecture/adr/`
   (7 newly documented foundational decisions + 10 prior decisions preserved and renumbered), with
