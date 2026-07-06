@@ -1,3 +1,7 @@
+# Two independent jobs, run in parallel:
+#   - quality: lint/type-check/architecture-boundary/test the Python package.
+#   - docker:  build the image and smoke-test it via docker compose.
+# Both must pass before a PR can merge (see CONTRIBUTING.md).
 name: CI
 
 on:
@@ -18,23 +22,29 @@ jobs:
         with:
           python-version: "3.12"
           cache: "pip"
+          # No requirements*.txt exists (dependencies live in pyproject.toml, see ADR-007) —
+          # without this, setup-python's default file glob finds nothing to hash and silently
+          # skips caching.
+          cache-dependency-path: pyproject.toml
 
       - name: Install dependencies
         run: python -m pip install -e ".[dev]"
 
-      - name: Ruff
+      # Each quality gate runs as its own step so a failure is immediately attributable to one
+      # tool in the Actions UI, instead of buried in one combined log.
+      - name: Ruff (lint + import order)
         run: ruff check .
 
-      - name: Black
+      - name: Black (formatting)
         run: black --check .
 
-      - name: Mypy (strict)
+      - name: Mypy (strict type-check)
         run: mypy
 
-      - name: Import-linter
+      - name: Import-linter (architecture boundary contracts)
         run: lint-imports
 
-      - name: Pytest with coverage
+      - name: Pytest (unit tests + coverage)
         run: pytest --cov-report=xml
 
       - name: Upload coverage report
@@ -56,4 +66,6 @@ jobs:
         run: docker compose config
 
       - name: Run app container via compose
+        # Exercises the same path a developer runs locally (README "Running with Docker") — the
+        # placeholder entrypoint logs one line and exits 0; a non-zero exit fails this step.
         run: docker compose run --rm app

@@ -1,3 +1,6 @@
+# Runs on every `git commit`. Local hooks (ruff/black/mypy) execute against whatever Python is
+# active on PATH — activate .venv first (see DEVELOPMENT.md) or they'll fail with "not found"
+# rather than silently skip. `pre-commit run --all-files` runs the same checks CI runs.
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
@@ -10,18 +13,21 @@ repos:
   - repo: local
     hooks:
       - id: ruff
-        name: ruff
+        name: ruff (lint + import order)
         entry: ruff check --fix
         language: system
         types: [python]
       - id: black
-        name: black
+        name: black (format)
         entry: black
         language: system
         types: [python]
       - id: mypy
-        name: mypy
+        name: mypy --strict (types)
         entry: mypy
         language: system
         types: [python]
+        # mypy is configured to analyze the whole src/ tree at once ([tool.mypy] files = ["src"]);
+        # running it per-changed-file would miss cross-module type errors and can produce
+        # duplicate-module errors under explicit_package_bases, so it always sees the full project.
         pass_filenames: false

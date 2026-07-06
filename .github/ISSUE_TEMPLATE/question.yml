@@ -1,0 +1,27 @@
+name: Question
+description: Ask about the architecture, a design decision, or how to approach something.
+title: "question: <short summary>"
+labels: ["type:chore"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check first whether this is already answered: [CLAUDE.md](../../CLAUDE.md),
+        [docs/architecture/](../../docs/architecture/) (especially the
+        [ADRs](../../docs/architecture/adr/)), and [docs/roadmap.md](../../docs/roadmap.md) cover
+        most "why is it built this way" questions.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: What you've already checked
+      description: Which docs/ADRs you looked at, so the answer can point past them rather than repeat them.
+    validations:
+      required: false
