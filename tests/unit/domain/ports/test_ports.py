@@ -7,6 +7,8 @@ from types import TracebackType
 from real_estate.domain.model import AlertId, PropertyId, SearchAlert, UserId
 from real_estate.domain.model.property import Property
 from real_estate.domain.ports import (
+    NormalizationIssue,
+    NormalizationResult,
     NotificationMessage,
     PortalQuery,
     RawListing,
@@ -92,3 +94,19 @@ def test_boundary_dtos_construct() -> None:
 
     msg = NotificationMessage(title="New match", body="A plot in Pontevedra", url="https://x")
     assert msg.title == "New match"
+
+
+def test_normalization_result_carries_property_and_issues() -> None:
+    issue = NormalizationIssue(
+        field="land_type", message="unmapped vocabulary", raw_value="parcela"
+    )
+    result = NormalizationResult(property=None, issues=(issue,))
+
+    assert result.property is None
+    assert result.issues[0].raw_value == "parcela"
+
+
+def test_normalization_result_defaults_to_no_issues() -> None:
+    result = NormalizationResult(property=None)
+
+    assert result.issues == ()
