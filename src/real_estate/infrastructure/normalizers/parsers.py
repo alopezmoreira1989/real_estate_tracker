@@ -23,6 +23,8 @@ from real_estate.domain.vocabulary import Currency
 _STRIP = ("€", "$", "m²", "m2")
 _NUMERIC = re.compile(r"-?[\d.,]+")
 _DIGITS = re.compile(r"\d+")
+_TRUE_WORDS = {"si", "sí", "true", "yes", "1"}
+_FALSE_WORDS = {"no", "false", "0"}
 
 
 def _clean(text: str) -> str:
@@ -77,3 +79,24 @@ def parse_int(text: str | None) -> int | None:
     if match is None:
         return None
     return int(match.group())
+
+
+def parse_bool(value: object) -> bool | None:
+    """Coerce a portal's tri-state boolean flag (``"sí"``/``"no"``, ``True``/``False``,
+    an actual ``bool``) to ``True``/``False``, or ``None`` when unrecognized/absent —
+    "unknown" must stay distinct from an explicit "no" (docs/architecture/02-domain-model.md §2).
+    """
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    text = _normalize_word(str(value))
+    if text in _TRUE_WORDS:
+        return True
+    if text in _FALSE_WORDS:
+        return False
+    return None
+
+
+def _normalize_word(text: str) -> str:
+    return text.strip().casefold()

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from real_estate.domain.vocabulary import LandType, PropertyType, Province
+from real_estate.domain.vocabulary import LandType, ListingType, PropertyType, Province
 
 
 def _normalize_text(text: str) -> str:
@@ -53,6 +53,15 @@ PROPERTY_TYPE_VOCAB: dict[str, PropertyType] = {
     "local comercial": PropertyType.COMMERCIAL,
     "local": PropertyType.COMMERCIAL,
     "edificio": PropertyType.BUILDING,
+}
+
+LISTING_TYPE_VOCAB: dict[str, ListingType] = {
+    "venta": ListingType.SALE,
+    "compra": ListingType.SALE,
+    "alquiler": ListingType.RENT,
+    "arrendamiento": ListingType.RENT,
+    "subasta": ListingType.AUCTION,
+    "traspaso": ListingType.TRANSFER,
 }
 
 LAND_TYPE_VOCAB: dict[str, LandType] = {
@@ -110,6 +119,13 @@ def resolve_land_type(text: str | None) -> LandType:
     if text is None:
         return LandType.UNKNOWN
     return LAND_TYPE_VOCAB.get(_normalize_text(text), LandType.UNKNOWN)
+
+
+def resolve_listing_type(text: str | None) -> ListingType:
+    """Map portal free text to a canonical :class:`ListingType`, or ``OTHER``."""
+    if text is None:
+        return ListingType.OTHER
+    return LISTING_TYPE_VOCAB.get(_normalize_text(text), ListingType.OTHER)
 
 
 def resolve_province(text: str | None) -> Province:

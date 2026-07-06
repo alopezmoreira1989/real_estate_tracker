@@ -3,7 +3,12 @@ from decimal import Decimal
 from real_estate.domain.model.area import Area
 from real_estate.domain.model.money import Money
 from real_estate.domain.vocabulary import Currency
-from real_estate.infrastructure.normalizers.parsers import parse_area, parse_int, parse_money
+from real_estate.infrastructure.normalizers.parsers import (
+    parse_area,
+    parse_bool,
+    parse_int,
+    parse_money,
+)
 
 
 def test_parse_money_handles_spanish_thousands_separator() -> None:
@@ -46,3 +51,19 @@ def test_parse_int_extracts_leading_digits() -> None:
 def test_parse_int_returns_none_for_missing_or_unparseable() -> None:
     assert parse_int(None) is None
     assert parse_int("N/D") is None
+
+
+def test_parse_bool_handles_actual_booleans() -> None:
+    assert parse_bool(True) is True
+    assert parse_bool(False) is False
+
+
+def test_parse_bool_handles_spanish_yes_no_text() -> None:
+    assert parse_bool("Sí") is True
+    assert parse_bool("si") is True
+    assert parse_bool("No") is False
+
+
+def test_parse_bool_returns_none_for_missing_or_unrecognized() -> None:
+    assert parse_bool(None) is None
+    assert parse_bool("N/D") is None
