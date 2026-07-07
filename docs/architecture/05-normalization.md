@@ -137,6 +137,26 @@ incomplete — surfaced on the dashboard rather than silently degrading match qu
   (fails when a portal introduces a new term we haven't mapped).
 - **Property invariants**: normalized output always constructs valid VOs or yields an issue.
 
+### Capturing a scraper fixture for a new portal (process, established Phase 5)
+
+The scraper's HTML→`RawListing` step is tested against a **real saved page**, never a synthetic one
+we invent — a hand-written fixture only tests the parser against our own assumption of a portal's
+markup, which can't catch a real mismatch. Process for each new portal:
+
+1. A human opens a representative search-results page on the live site and saves it (browser
+   "Save Page As → Webpage, HTML only") — no automated/unattended scraping of the live site
+   (CLAUDE.md §14).
+2. The saved file goes in `tests/fixtures/<portal>/search_results_page.html` (only the `.html` file;
+   the accompanying saved-assets folder — images/CSS — isn't needed and isn't committed).
+3. The scraper's card selectors and URL pattern are built/verified directly against that file; the
+   contract test loads it and asserts sane extracted values for at least one known listing.
+4. Anything not observable on the captured page (e.g. a field only shown on some listing types) is
+   left unimplemented and documented as inferred/unverified rather than guessed silently — see
+   `infrastructure/scrapers/idealista/field_labels.py` for the pattern.
+
+This is the same process for every future portal (Fotocasa, Pisos.com, … — V2), not something
+improvised per portal.
+
 ---
 
 ## 8. Open questions for review
