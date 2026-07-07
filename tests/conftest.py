@@ -1,4 +1,5 @@
-"""Fixtures for persistence integration tests.
+"""Shared fixtures for tests that need a real (temp) SQLite database —
+integration and e2e alike (root-level so both directories see it).
 
 Builds the schema on a temporary SQLite database, seeds a user (so alert
 foreign keys are satisfiable), and yields a small harness exposing a

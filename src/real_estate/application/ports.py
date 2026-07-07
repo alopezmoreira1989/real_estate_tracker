@@ -11,6 +11,16 @@ may depend on application, never the reverse, CLAUDE.md §6).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Protocol
+
+
+class Clock(Protocol):
+    """Injected time source — no ``datetime.now()`` in use-case logic
+    (CLAUDE.md §8), so a cycle's timestamps are deterministic and testable.
+    """
+
+    def now(self) -> datetime: ...
 
 
 @dataclass(frozen=True, slots=True)
