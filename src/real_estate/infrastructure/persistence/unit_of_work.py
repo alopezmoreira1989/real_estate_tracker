@@ -14,8 +14,20 @@ from sqlalchemy.orm import Session, sessionmaker
 from real_estate.infrastructure.persistence.repositories.alert_repository import (
     SqlAlchemyAlertRepository,
 )
+from real_estate.infrastructure.persistence.repositories.match_repository import (
+    SqlAlchemyMatchRepository,
+)
+from real_estate.infrastructure.persistence.repositories.portal_listing_repository import (
+    SqlAlchemyPortalListingRepository,
+)
 from real_estate.infrastructure.persistence.repositories.property_repository import (
     SqlAlchemyPropertyRepository,
+)
+from real_estate.infrastructure.persistence.repositories.search_cache_repository import (
+    SqlAlchemySearchCacheRepository,
+)
+from real_estate.infrastructure.persistence.repositories.search_execution_repository import (
+    SqlAlchemySearchExecutionRepository,
 )
 
 
@@ -24,6 +36,10 @@ class SqlAlchemyUnitOfWork:
 
     alerts: SqlAlchemyAlertRepository
     properties: SqlAlchemyPropertyRepository
+    matches: SqlAlchemyMatchRepository
+    portal_listings: SqlAlchemyPortalListingRepository
+    search_cache: SqlAlchemySearchCacheRepository
+    search_executions: SqlAlchemySearchExecutionRepository
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
@@ -32,6 +48,10 @@ class SqlAlchemyUnitOfWork:
         self._session = self._session_factory()
         self.alerts = SqlAlchemyAlertRepository(self._session)
         self.properties = SqlAlchemyPropertyRepository(self._session)
+        self.matches = SqlAlchemyMatchRepository(self._session)
+        self.portal_listings = SqlAlchemyPortalListingRepository(self._session)
+        self.search_cache = SqlAlchemySearchCacheRepository(self._session)
+        self.search_executions = SqlAlchemySearchExecutionRepository(self._session)
         return self
 
     def __exit__(

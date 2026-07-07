@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
@@ -27,7 +28,7 @@ from real_estate.domain.vocabulary import (
     PropertyType,
     Province,
 )
-from real_estate.infrastructure.persistence.models.orm import PropertyModel
+from real_estate.infrastructure.persistence.models.orm import PriceHistoryModel, PropertyModel
 
 
 def _to_model(prop: Property, *, now: datetime) -> PropertyModel:
@@ -118,8 +119,49 @@ class SqlAlchemyPropertyRepository:
         self._session = session
 
     def add(self, prop: Property) -> None:
-        self._session.merge(_to_model(prop, now=datetime.now(UTC)))
+        """Upsert ``prop``; appends a PriceHistory row only if the price changed.
+
+        ``first_seen_at`` is preserved across re-scrapes (only ``last_seen_at``
+        moves forward) — it marks when we first observed this property, which
+        is what staleness/INACTIVE transitions are measured from (doc03).
+        """
+        now = datetime.now(UTC)
+        existing = self._session.get(PropertyModel, prop.id)
+
+        model = _to_model(prop, now=now)
+        if existing is not None:
+            model.first_seen_at = existing.first_seen_at
+
+        price = prop.price
+        price_changed = price is not None and self._price_changed(existing, price)
+
+        # The property row must exist before PriceHistory is inserted, or its
+        # property_id foreign key has nothing to point at yet. PropertyModel and
+        # PriceHistoryModel have no ORM relationship(), so an explicit flush is
+        # needed rather than relying on SQLAlchemy's automatic dependency
+        # ordering between otherwise-unrelated mapped classes.
+        self._session.merge(model)
+        self._session.flush()
+
+        if price_changed and price is not None:
+            self._session.add(
+                PriceHistoryModel(
+                    id=uuid4(),
+                    property_id=prop.id,
+                    price_amount=price.amount,
+                    price_currency=price.currency.value,
+                    observed_at=now,
+                )
+            )
 
     def get(self, property_id: PropertyId) -> Property | None:
         model = self._session.get(PropertyModel, property_id)
         return _to_domain(model) if model is not None else None
+
+    @staticmethod
+    def _price_changed(existing: PropertyModel | None, price: Money) -> bool:
+        if existing is None or existing.price_amount is None:
+            return True
+        return (
+            existing.price_amount != price.amount or existing.price_currency != price.currency.value
+        )
