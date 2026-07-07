@@ -2,12 +2,12 @@
 
 ``_parse`` extracts exactly the raw fields
 ``infrastructure/normalizers/idealista/field_map.py::IDEALISTA_FIELD_MAP``
-already expects (``precio``, ``superficie``/``superficie_solar``, ``tipo``,
-``operacion``, ``provincia``, ``titulo``, ``descripcion``) — the scraper and
-normalizer share that vocabulary by construction. No cleaning happens here
-(RawListing's contract, docs/architecture/05-normalization.md §1); values are
-copied verbatim from the page, parsing/vocabulary mapping is the Normalizer's
-job (Phase 4).
+already expects (``precio``, ``superficie``, ``tipo``, ``operacion``,
+``provincia``, ``titulo``, ``descripcion``) — the scraper and normalizer
+share that vocabulary by construction. No cleaning happens here (RawListing's
+contract, docs/architecture/05-normalization.md §1); values are copied
+verbatim from the page, parsing/vocabulary mapping is the Normalizer's job
+(Phase 4).
 
 The card selectors (``article.item``, ``.item-price``, …) and the URL pattern
 are verified against a real saved search-results page
@@ -54,17 +54,11 @@ class IdealistaScraper(BaseScraper):
         tipo = field_labels.property_type_label(query.params.get("property_type"))
         operacion = field_labels.listing_type_label(query.params.get("listing_type"))
         provincia = field_labels.province_label(query.params.get("province"))
-        is_land = query.params.get("property_type") == "LAND"
 
         listings = []
         for card in soup.select("article.item"):
             listing = self._parse_card(
-                card,
-                scraped_at,
-                tipo=tipo,
-                operacion=operacion,
-                provincia=provincia,
-                is_land=is_land,
+                card, scraped_at, tipo=tipo, operacion=operacion, provincia=provincia
             )
             if listing is not None:
                 listings.append(listing)
@@ -78,7 +72,6 @@ class IdealistaScraper(BaseScraper):
         tipo: str,
         operacion: str,
         provincia: str,
-        is_land: bool,
     ) -> RawListing | None:
         external_id = card.get("data-element-id")
         if not isinstance(external_id, str) or not external_id:
@@ -108,13 +101,18 @@ class IdealistaScraper(BaseScraper):
         if price_el is not None:
             raw["precio"] = price_el.get_text(strip=True)
 
-        # Only a single size figure is verified on a real card (land plot
-        # size). Flat/house cards likely also show rooms/bathrooms alongside
-        # it, but that markup hasn't been observed on a real page yet.
+        # Only a single size figure is verified on a real card. It always
+        # maps to "superficie" (-> Property.area): for LAND that single
+        # figure *is* the plot's own area, and Property.price_per_m2 is
+        # derived from `area` project-wide (see the "Urbanizable land in
+        # Pontevedra" golden fixture, doc04) — mapping it to plot_area
+        # instead would silently make price_per_m2 unavailable for every
+        # scraped land listing. Flat/house cards likely also show
+        # rooms/bathrooms and a separate plot size alongside it, but that
+        # markup hasn't been observed on a real page yet.
         size_el = card.select_one(".item-detail-char .item-detail")
         if size_el is not None:
-            size_field = "superficie_solar" if is_land else "superficie"
-            raw[size_field] = size_el.get_text(strip=True)
+            raw["superficie"] = size_el.get_text(strip=True)
 
         return RawListing(
             portal_slug=self.portal_slug,

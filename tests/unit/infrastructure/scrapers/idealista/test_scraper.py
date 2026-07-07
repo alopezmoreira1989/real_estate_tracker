@@ -61,7 +61,7 @@ def test_parse_extracts_sane_raw_fields_for_a_known_listing() -> None:
     assert listing.url == "https://www.idealista.com/inmueble/100338209/"
     assert "Estrigueiras" in listing.raw["titulo"]
     assert listing.raw["precio"] == "688.590€"
-    assert listing.raw["superficie_solar"] == "15.677 m²"
+    assert listing.raw["superficie"] == "15.677 m²"
     assert listing.raw["tipo"] == "Suelo"
     assert listing.raw["operacion"] == "Venta"
     assert listing.raw["provincia"] == "Pontevedra"
