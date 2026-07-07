@@ -143,6 +143,15 @@ class SqlAlchemyAlertRepository:
         self._session = session
 
     def add(self, alert: SearchAlert) -> None:
+        """Upsert ``alert`` by id.
+
+        Used both to create a new alert and to re-save an existing one after
+        a mutation (e.g. ``RunAlertCycle`` calling ``alert.mark_run()`` and
+        persisting the updated ``last_run_at`` — Phase 5). ``merge`` (not
+        ``add``) so re-saving an existing alert updates in place, including
+        reconciling its condition tree, instead of raising a duplicate
+        primary key error.
+        """
         model = SearchAlertModel(
             id=alert.id,
             user_id=alert.user_id,
@@ -156,10 +165,19 @@ class SqlAlchemyAlertRepository:
         rows: list[AlertConditionModel] = []
         _build_rows(alert.id, alert.conditions, None, 0, rows)
         model.conditions = rows
-        self._session.add(model)
+        self._session.merge(model)
 
+        existing_portal_ids = set(
+            self._session.execute(
+                select(AlertSubscriptionPortalModel.portal_id).where(
+                    AlertSubscriptionPortalModel.alert_id == alert.id
+                )
+            ).scalars()
+        )
         for slug in sorted(alert.portal_slugs):
             portal = self._get_or_create_portal(slug)
+            if portal.id in existing_portal_ids:
+                continue
             self._session.add(AlertSubscriptionPortalModel(alert_id=alert.id, portal_id=portal.id))
 
     def get(self, alert_id: AlertId) -> SearchAlert | None:

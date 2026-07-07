@@ -112,6 +112,31 @@ def test_alert_round_trips_with_condition_tree(persistence) -> None:
     assert loaded.conditions.leaf_count() == 3
 
 
+def test_alert_add_upserts_an_existing_alert_in_place(persistence) -> None:
+    """Re-saving an already-persisted alert (e.g. RunAlertCycle calling
+    mark_run() then uow.alerts.add(alert), Phase 5) must update in place —
+    not raise a duplicate primary key error, and not duplicate/orphan its
+    condition rows or portal subscriptions."""
+    alert = _alert(persistence.user_id)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    alert.mark_run(now=NOW)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)  # re-save the mutated aggregate
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        loaded = uow.alerts.get(alert.id)
+
+    assert loaded is not None
+    assert loaded.last_run_at == NOW
+    assert loaded.portal_slugs == {"idealista", "fotocasa"}
+    assert loaded.conditions == alert.conditions
+    assert loaded.conditions.leaf_count() == 3
+
+
 def test_list_for_user_returns_only_that_users_alerts(persistence) -> None:
     alert = _alert(persistence.user_id)
     with persistence.new_uow() as uow:

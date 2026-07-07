@@ -78,6 +78,14 @@ class AlertConditionModel(Base):
     """One node of an alert's condition tree (a GROUP or a leaf CONDITION)."""
 
     __tablename__ = "alert_conditions"
+    # parent_group_id has ondelete="CASCADE" (a group's own removal already
+    # cascades to its descendants at the DB level), so the ORM's delete-orphan
+    # bookkeeping legitimately finds fewer rows left to delete than it
+    # expected when a whole subtree is removed in one go (e.g. re-saving an
+    # alert after SearchAlert.replace_conditions/RunAlertCycle's mark_run
+    # upsert) — confirmed harmless (no orphaned/duplicated rows survive), just
+    # noisy without this.
+    __mapper_args__ = {"confirm_deleted_rows": False}
     __table_args__ = (
         CheckConstraint("node_type in ('GROUP', 'CONDITION')", name="node_type_valid"),
         CheckConstraint(

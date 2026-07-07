@@ -10,7 +10,14 @@ from __future__ import annotations
 from types import TracebackType
 from typing import Protocol, runtime_checkable
 
-from real_estate.domain.ports.repositories import AlertRepository, PropertyRepository
+from real_estate.domain.ports.repositories import (
+    AlertRepository,
+    MatchRepository,
+    PortalListingRepository,
+    PropertyRepository,
+    SearchCacheRepository,
+    SearchExecutionRepository,
+)
 
 
 @runtime_checkable
@@ -19,6 +26,10 @@ class UnitOfWork(Protocol):
 
     alerts: AlertRepository
     properties: PropertyRepository
+    matches: MatchRepository
+    portal_listings: PortalListingRepository
+    search_cache: SearchCacheRepository
+    search_executions: SearchExecutionRepository
 
     def __enter__(self) -> UnitOfWork: ...
 

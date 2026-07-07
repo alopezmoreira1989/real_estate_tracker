@@ -36,11 +36,25 @@ class RawListing:
     raw: Mapping[str, Any] = field(default_factory=dict)
 
 
+class ScraperError(Exception):
+    """A scraper implementation failed to fetch/parse a query.
+
+    Defined alongside the port (not in infrastructure) so that
+    ``RunAlertCycle`` (application layer) can catch scraper failures
+    generically, without depending on any concrete infrastructure adapter's
+    exception type. Infrastructure-specific failure modes (e.g. a circuit
+    breaker being open) subclass this.
+    """
+
+
 class Scraper(Protocol):
     """Fetches raw listings from a single portal."""
 
     portal_slug: str
 
     def fetch(self, query: PortalQuery) -> Sequence[RawListing]:
-        """Return the raw listings matching ``query`` (may be empty)."""
+        """Return the raw listings matching ``query`` (may be empty).
+
+        Raises :class:`ScraperError` (or a subclass) on failure.
+        """
         ...
