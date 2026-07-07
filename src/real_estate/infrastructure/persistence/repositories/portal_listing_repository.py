@@ -21,9 +21,13 @@ class SqlAlchemyPortalListingRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get_content_hash(self, portal_slug: str, external_id: str) -> str | None:
+    def find_unchanged_property_id(
+        self, portal_slug: str, external_id: str, content_hash: str
+    ) -> PropertyId | None:
         model = self._find(portal_slug, external_id)
-        return model.content_hash if model is not None else None
+        if model is not None and model.content_hash == content_hash:
+            return PropertyId(model.property_id)
+        return None
 
     def upsert(
         self,

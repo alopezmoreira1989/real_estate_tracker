@@ -81,11 +81,13 @@ def test_match_add_if_new_is_idempotent(persistence) -> None:
     assert second is False
 
 
-def test_portal_listing_content_hash_round_trips(persistence) -> None:
+def test_portal_listing_find_unchanged_property_id(persistence) -> None:
     prop = _property()
     with persistence.new_uow() as uow:
         uow.properties.add(prop)
-        assert uow.portal_listings.get_content_hash("idealista", "ext-1") is None
+        assert (
+            uow.portal_listings.find_unchanged_property_id("idealista", "ext-1", "hash-a") is None
+        )
         uow.portal_listings.upsert(
             portal_slug="idealista",
             external_id="ext-1",
@@ -98,7 +100,15 @@ def test_portal_listing_content_hash_round_trips(persistence) -> None:
         uow.commit()
 
     with persistence.new_uow() as uow:
-        assert uow.portal_listings.get_content_hash("idealista", "ext-1") == "hash-a"
+        # same hash -> unchanged, returns the linked property id
+        assert (
+            uow.portal_listings.find_unchanged_property_id("idealista", "ext-1", "hash-a")
+            == prop.id
+        )
+        # different hash -> changed, needs re-normalizing
+        assert (
+            uow.portal_listings.find_unchanged_property_id("idealista", "ext-1", "hash-b") is None
+        )
 
 
 def test_portal_listing_upsert_updates_in_place_not_duplicated(persistence) -> None:
@@ -129,7 +139,13 @@ def test_portal_listing_upsert_updates_in_place_not_duplicated(persistence) -> N
         uow.commit()
 
     with persistence.new_uow() as uow:
-        assert uow.portal_listings.get_content_hash("idealista", "ext-2") == "hash-b"
+        assert (
+            uow.portal_listings.find_unchanged_property_id("idealista", "ext-2", "hash-b")
+            == prop.id
+        )
+        assert (
+            uow.portal_listings.find_unchanged_property_id("idealista", "ext-2", "hash-a") is None
+        )
 
 
 def test_search_cache_hit_within_ttl(persistence) -> None:

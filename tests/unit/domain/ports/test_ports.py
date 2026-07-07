@@ -60,10 +60,15 @@ class _InMemoryMatchRepo:
 
 class _InMemoryPortalListingRepo:
     def __init__(self) -> None:
-        self._hashes: dict[tuple[str, str], str] = {}
+        self._records: dict[tuple[str, str], tuple[PropertyId, str]] = {}
 
-    def get_content_hash(self, portal_slug: str, external_id: str) -> str | None:
-        return self._hashes.get((portal_slug, external_id))
+    def find_unchanged_property_id(
+        self, portal_slug: str, external_id: str, content_hash: str
+    ) -> PropertyId | None:
+        record = self._records.get((portal_slug, external_id))
+        if record is not None and record[1] == content_hash:
+            return record[0]
+        return None
 
     def upsert(
         self,
@@ -76,7 +81,7 @@ class _InMemoryPortalListingRepo:
         content_hash: str,
         scraped_at: datetime,
     ) -> None:
-        self._hashes[(portal_slug, external_id)] = content_hash
+        self._records[(portal_slug, external_id)] = (property_id, content_hash)
 
 
 class _InMemorySearchCacheRepo:

@@ -56,13 +56,17 @@ class MatchRepository(Protocol):
 
 
 class PortalListingRepository(Protocol):
-    """Tracks the raw, per-portal record backing a canonical :class:`Property`.
+    """Tracks the raw, per-portal record backing a canonical :class:`Property`."""
 
-    ``get_content_hash`` lets a use-case skip re-normalizing a listing that
-    hasn't changed since the last scrape (doc03, doc05 §2).
-    """
-
-    def get_content_hash(self, portal_slug: str, external_id: str) -> str | None: ...
+    def find_unchanged_property_id(
+        self, portal_slug: str, external_id: str, content_hash: str
+    ) -> PropertyId | None:
+        """Return the already-linked property id if this exact ``content_hash``
+        was already recorded for ``(portal_slug, external_id)`` — meaning
+        nothing changed since the last scrape and re-normalizing can be
+        skipped (doc03, doc05 §2). ``None`` means new or changed: normalize it.
+        """
+        ...
 
     def upsert(
         self,
