@@ -13,6 +13,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from cryptography.fernet import Fernet
 
 from real_estate.domain.model.identifiers import UserId
 from real_estate.infrastructure.persistence.database import (
@@ -39,6 +40,7 @@ def persistence(tmp_path: Path) -> Iterator[Persistence]:
     engine = create_db_engine(f"sqlite:///{tmp_path / 'test.db'}")
     Base.metadata.create_all(engine)
     session_factory = create_session_factory(engine)
+    encryption_key = Fernet.generate_key().decode()
 
     user_id = UserId(uuid4())
     with session_factory() as session:
@@ -52,5 +54,8 @@ def persistence(tmp_path: Path) -> Iterator[Persistence]:
         )
         session.commit()
 
-    yield Persistence(new_uow=lambda: SqlAlchemyUnitOfWork(session_factory), user_id=user_id)
+    yield Persistence(
+        new_uow=lambda: SqlAlchemyUnitOfWork(session_factory, encryption_key=encryption_key),
+        user_id=user_id,
+    )
     engine.dispose()

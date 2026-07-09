@@ -9,6 +9,8 @@ from real_estate.domain.ports.notifier import NotificationMessage, Notifier
 from real_estate.domain.ports.repositories import (
     AlertRepository,
     MatchRepository,
+    NotificationChannelRepository,
+    NotificationRepository,
     PortalListingRepository,
     PropertyRepository,
     SearchCacheRepository,
@@ -24,7 +26,9 @@ __all__ = [
     "NormalizationIssue",
     "NormalizationResult",
     "Normalizer",
+    "NotificationChannelRepository",
     "NotificationMessage",
+    "NotificationRepository",
     "Notifier",
     "PortalListingRepository",
     "PortalQuery",

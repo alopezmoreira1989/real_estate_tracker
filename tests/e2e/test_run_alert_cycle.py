@@ -17,7 +17,10 @@ from real_estate.application.use_cases.run_alert_cycle import RunAlertCycle
 from real_estate.domain.model import (
     AlertCondition,
     AlertId,
+    ChannelType,
     GroupOperator,
+    NotificationChannel,
+    NotificationChannelId,
     Operator,
     RuleGroup,
     SearchAlert,
@@ -190,6 +193,31 @@ def test_scraper_failure_is_isolated_and_the_cycle_continues(persistence) -> Non
     assert report.queries_failed == 1
     assert report.queries_succeeded == 0
     assert report.matches_created == 0
+
+
+def test_a_new_match_enqueues_a_pending_notification_per_enabled_channel(persistence) -> None:
+    alert = _land_alert(persistence.user_id)
+    channel = NotificationChannel(
+        id=NotificationChannelId(uuid4()),
+        user_id=persistence.user_id,
+        channel_type=ChannelType.TELEGRAM,
+        target="chat-1",
+    )
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.notification_channels.add(channel)
+        uow.commit()
+
+    scraper = _FakeScraper([_matching_raw_listing()])
+    cycle = _make_cycle(persistence, scraper)
+
+    report = cycle.run([alert])
+
+    assert report.matches_created == 1
+    with persistence.new_uow() as uow:
+        pending = uow.notifications.list_pending(limit=10)
+    assert len(pending) == 1
+    assert pending[0].channel_id == channel.id
 
 
 def test_ten_alerts_on_the_same_search_scrape_idealista_once(persistence) -> None:

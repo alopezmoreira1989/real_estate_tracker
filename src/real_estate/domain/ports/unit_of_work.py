@@ -13,6 +13,8 @@ from typing import Protocol, runtime_checkable
 from real_estate.domain.ports.repositories import (
     AlertRepository,
     MatchRepository,
+    NotificationChannelRepository,
+    NotificationRepository,
     PortalListingRepository,
     PropertyRepository,
     SearchCacheRepository,
@@ -30,6 +32,8 @@ class UnitOfWork(Protocol):
     portal_listings: PortalListingRepository
     search_cache: SearchCacheRepository
     search_executions: SearchExecutionRepository
+    notification_channels: NotificationChannelRepository
+    notifications: NotificationRepository
 
     def __enter__(self) -> UnitOfWork: ...
 

@@ -77,8 +77,8 @@ def test_match_add_if_new_is_idempotent(persistence) -> None:
         second = uow.matches.add_if_new(match)
         uow.commit()
 
-    assert first is True
-    assert second is False
+    assert first is not None
+    assert second is None
 
 
 def test_portal_listing_find_unchanged_property_id(persistence) -> None:
@@ -146,6 +146,47 @@ def test_portal_listing_upsert_updates_in_place_not_duplicated(persistence) -> N
         assert (
             uow.portal_listings.find_unchanged_property_id("idealista", "ext-2", "hash-a") is None
         )
+
+
+def test_match_get_returns_the_persisted_match(persistence) -> None:
+    prop = _property()
+    alert = _alert(persistence.user_id)
+    with persistence.new_uow() as uow:
+        uow.properties.add(prop)
+        uow.alerts.add(alert)
+        uow.commit()
+
+    match = AlertMatch(alert_id=alert.id, property_id=prop.id, matched_at=NOW)
+    with persistence.new_uow() as uow:
+        match_id = uow.matches.add_if_new(match)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        fetched = uow.matches.get(match_id)
+
+    assert fetched is not None
+    assert fetched.alert_id == alert.id
+    assert fetched.property_id == prop.id
+
+
+def test_portal_listing_get_url_for_property(persistence) -> None:
+    prop = _property()
+    with persistence.new_uow() as uow:
+        uow.properties.add(prop)
+        assert uow.portal_listings.get_url_for_property(prop.id) is None
+        uow.portal_listings.upsert(
+            portal_slug="idealista",
+            external_id="ext-3",
+            property_id=prop.id,
+            url="https://idealista.com/ext-3",
+            raw_payload={},
+            content_hash="hash-a",
+            scraped_at=NOW,
+        )
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        assert uow.portal_listings.get_url_for_property(prop.id) == "https://idealista.com/ext-3"
 
 
 def test_search_cache_hit_within_ttl(persistence) -> None:

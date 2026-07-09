@@ -63,6 +63,16 @@ class SqlAlchemyPortalListingRepository:
             )
         )
 
+    def get_url_for_property(self, property_id: PropertyId) -> str | None:
+        model = (
+            self._session.execute(
+                select(PortalListingModel).where(PortalListingModel.property_id == property_id)
+            )
+            .scalars()
+            .first()
+        )
+        return model.url if model is not None else None
+
     def _find(self, portal_slug: str, external_id: str) -> PortalListingModel | None:
         portal = self._session.execute(
             select(PortalModel).where(PortalModel.slug == portal_slug)

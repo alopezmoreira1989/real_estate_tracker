@@ -18,6 +18,8 @@ from real_estate.domain.model.identifiers import (
     AlertId,
     ConditionId,
     MatchId,
+    NotificationChannelId,
+    NotificationId,
     PropertyId,
     UserId,
 )
@@ -25,6 +27,8 @@ from real_estate.domain.model.location import GeoPoint, Location
 from real_estate.domain.model.match import AlertMatch, MatchStatus
 from real_estate.domain.model.media import Media
 from real_estate.domain.model.money import Money
+from real_estate.domain.model.notification import Notification, NotificationStatus
+from real_estate.domain.model.notification_channel import ChannelType, NotificationChannel
 from real_estate.domain.model.property import Property
 
 __all__ = [
@@ -32,6 +36,7 @@ __all__ = [
     "AlertId",
     "AlertMatch",
     "Area",
+    "ChannelType",
     "ConditionId",
     "ConditionValue",
     "Features",
@@ -42,6 +47,11 @@ __all__ = [
     "MatchStatus",
     "Media",
     "Money",
+    "Notification",
+    "NotificationChannel",
+    "NotificationChannelId",
+    "NotificationId",
+    "NotificationStatus",
     "Operator",
     "PricePerM2",
     "Property",

@@ -20,6 +20,7 @@ dependencies = [
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "tenacity>=8.5",
+    "cryptography>=43.0",
 ]
 
 [project.urls]
@@ -138,6 +139,7 @@ forbidden_modules = [
     "fastapi",
     "typer",
     "streamlit",
+    "cryptography",
 ]
 # Why: CLAUDE.md §2 requires the domain to import "nothing but the standard library" — this is
 # that rule checked by machine instead of trusted by convention. The list is every framework any

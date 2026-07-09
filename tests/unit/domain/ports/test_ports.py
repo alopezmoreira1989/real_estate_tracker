@@ -6,9 +6,13 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from types import TracebackType
 from typing import Any
+from uuid import uuid4
 
 from real_estate.domain.model import AlertId, PropertyId, SearchAlert, UserId
+from real_estate.domain.model.identifiers import MatchId, NotificationChannelId, NotificationId
 from real_estate.domain.model.match import AlertMatch
+from real_estate.domain.model.notification import Notification, NotificationStatus
+from real_estate.domain.model.notification_channel import NotificationChannel
 from real_estate.domain.model.property import Property
 from real_estate.domain.ports import (
     NormalizationIssue,
@@ -48,19 +52,34 @@ class _InMemoryPropertyRepo:
 
 class _InMemoryMatchRepo:
     def __init__(self) -> None:
-        self._keys: set[tuple[AlertId, PropertyId]] = set()
+        self._by_key: dict[tuple[AlertId, PropertyId], AlertMatch] = {}
 
-    def add_if_new(self, match: AlertMatch) -> bool:
+    def add_if_new(self, match: AlertMatch) -> MatchId | None:
         key = (match.alert_id, match.property_id)
-        if key in self._keys:
-            return False
-        self._keys.add(key)
-        return True
+        if key in self._by_key:
+            return None
+        stored = AlertMatch(
+            alert_id=match.alert_id,
+            property_id=match.property_id,
+            matched_at=match.matched_at,
+            status=match.status,
+            id=MatchId(uuid4()),
+        )
+        self._by_key[key] = stored
+        assert stored.id is not None
+        return stored.id
+
+    def get(self, match_id: MatchId) -> AlertMatch | None:
+        for match in self._by_key.values():
+            if match.id == match_id:
+                return match
+        return None
 
 
 class _InMemoryPortalListingRepo:
     def __init__(self) -> None:
         self._records: dict[tuple[str, str], tuple[PropertyId, str]] = {}
+        self._urls: dict[PropertyId, str] = {}
 
     def find_unchanged_property_id(
         self, portal_slug: str, external_id: str, content_hash: str
@@ -82,6 +101,10 @@ class _InMemoryPortalListingRepo:
         scraped_at: datetime,
     ) -> None:
         self._records[(portal_slug, external_id)] = (property_id, content_hash)
+        self._urls[property_id] = url
+
+    def get_url_for_property(self, property_id: PropertyId) -> str | None:
+        return self._urls.get(property_id)
 
 
 class _InMemorySearchCacheRepo:
@@ -122,6 +145,50 @@ class _InMemorySearchExecutionRepo:
         self.records.append(status)
 
 
+class _InMemoryNotificationChannelRepo:
+    def __init__(self) -> None:
+        self._by_id: dict[NotificationChannelId, NotificationChannel] = {}
+
+    def add(self, channel: NotificationChannel) -> None:
+        self._by_id[channel.id] = channel
+
+    def get(self, channel_id: NotificationChannelId) -> NotificationChannel | None:
+        return self._by_id.get(channel_id)
+
+    def list_enabled_for_user(self, user_id: UserId) -> list[NotificationChannel]:
+        return [c for c in self._by_id.values() if c.user_id == user_id and c.is_enabled]
+
+
+class _InMemoryNotificationRepo:
+    def __init__(self) -> None:
+        self._by_id: dict[NotificationId, Notification] = {}
+
+    def enqueue(
+        self, match_id: MatchId, channel_id: NotificationChannelId, *, now: datetime
+    ) -> bool:
+        key_exists = any(
+            n.match_id == match_id and n.channel_id == channel_id for n in self._by_id.values()
+        )
+        if key_exists:
+            return False
+        notification_id = NotificationId(uuid4())
+        self._by_id[notification_id] = Notification(
+            match_id=match_id, channel_id=channel_id, created_at=now, id=notification_id
+        )
+        return True
+
+    def list_pending(self, limit: int) -> list[Notification]:
+        return [n for n in self._by_id.values() if n.status == NotificationStatus.PENDING][:limit]
+
+    def mark_sent(self, notification_id: NotificationId, *, sent_at: datetime) -> None:
+        pass
+
+    def mark_failed(
+        self, notification_id: NotificationId, *, error: str, max_attempts: int, now: datetime
+    ) -> None:
+        pass
+
+
 class _InMemoryUoW:
     def __init__(self) -> None:
         self.alerts = _InMemoryAlertRepo()
@@ -130,6 +197,8 @@ class _InMemoryUoW:
         self.portal_listings = _InMemoryPortalListingRepo()
         self.search_cache = _InMemorySearchCacheRepo()
         self.search_executions = _InMemorySearchExecutionRepo()
+        self.notification_channels = _InMemoryNotificationChannelRepo()
+        self.notifications = _InMemoryNotificationRepo()
         self.committed = False
 
     def __enter__(self) -> _InMemoryUoW:
