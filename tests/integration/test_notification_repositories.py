@@ -109,6 +109,26 @@ def test_notification_channel_list_enabled_for_user_excludes_disabled(persistenc
     assert [c.id for c in channels] == [enabled.id]
 
 
+def test_notification_channel_list_for_user_includes_disabled(persistence) -> None:
+    enabled = _channel(persistence.user_id, target="chat-a")
+    disabled = NotificationChannel(
+        id=NotificationChannelId(uuid4()),
+        user_id=persistence.user_id,
+        channel_type=ChannelType.TELEGRAM,
+        target="chat-b",
+        is_enabled=False,
+    )
+    with persistence.new_uow() as uow:
+        uow.notification_channels.add(enabled)
+        uow.notification_channels.add(disabled)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        channels = uow.notification_channels.list_for_user(persistence.user_id)
+
+    assert {c.id for c in channels} == {enabled.id, disabled.id}
+
+
 def test_notification_enqueue_is_idempotent(persistence) -> None:
     channel = _channel(persistence.user_id)
     with persistence.new_uow() as uow:

@@ -21,6 +21,8 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "tenacity>=8.5",
     "cryptography>=43.0",
+    "apscheduler>=3.10",
+    "typer>=0.12",
 ]
 
 [project.urls]
@@ -82,6 +84,11 @@ explicit_package_bases = true
 files = ["src"]
 # Alembic migration environment/scripts are operational, not type-checked.
 exclude = ["persistence/migrations/"]
+
+# APScheduler ships no type stubs and no types-apscheduler package exists on PyPI.
+[[tool.mypy.overrides]]
+module = "apscheduler.*"
+ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
 # Tests (pytest + coverage) — CLAUDE.md §8: unit/integration/e2e pyramid, mirrors src/ path-for-path.

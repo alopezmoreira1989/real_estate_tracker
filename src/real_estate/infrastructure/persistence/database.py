@@ -24,6 +24,10 @@ def create_db_engine(database_url: str) -> Engine:
         def _enable_sqlite_fk(dbapi_connection: object, _record: object) -> None:
             cursor = dbapi_connection.cursor()  # type: ignore[attr-defined]
             cursor.execute("PRAGMA foreign_keys=ON")
+            # Phase 7 introduces concurrent writers (per-portal worker pools,
+            # #33); without a busy timeout SQLite raises "database is locked"
+            # immediately on write contention instead of waiting briefly.
+            cursor.execute("PRAGMA busy_timeout=5000")
             cursor.close()
 
     return engine

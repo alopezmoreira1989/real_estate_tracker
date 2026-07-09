@@ -8,6 +8,7 @@ its portal subscriptions — onto the ``search_alerts``, ``alert_conditions``
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -189,6 +190,24 @@ class SqlAlchemyAlertRepository:
     def list_for_user(self, user_id: UserId) -> list[SearchAlert]:
         stmt = select(SearchAlertModel).where(SearchAlertModel.user_id == user_id)
         return [self._to_domain(m) for m in self._session.execute(stmt).scalars()]
+
+    def list_due(self, *, now: datetime) -> list[SearchAlert]:
+        """Active alerts due for a run.
+
+        The DB-side filter (``is_active``) uses the leading column of the
+        ``ix_search_alerts_due`` index (doc03) to shrink the candidate set;
+        the ``last_run_at + frequency_seconds <= now`` comparison finishes in
+        Python rather than as per-row SQL interval arithmetic, which is not
+        portable between SQLite (today) and the eventual PostgreSQL migration
+        — acceptable at single-user/MVP alert counts (doc06 §5, §8).
+        """
+        stmt = select(SearchAlertModel).where(SearchAlertModel.is_active.is_(True))
+        candidates = self._session.execute(stmt).scalars()
+        return [
+            self._to_domain(m)
+            for m in candidates
+            if m.last_run_at is None or (now - m.last_run_at).total_seconds() >= m.frequency_seconds
+        ]
 
     def _to_domain(self, model: SearchAlertModel) -> SearchAlert:
         slugs = self._session.execute(
