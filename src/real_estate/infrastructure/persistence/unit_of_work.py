@@ -17,6 +17,12 @@ from real_estate.infrastructure.persistence.repositories.alert_repository import
 from real_estate.infrastructure.persistence.repositories.match_repository import (
     SqlAlchemyMatchRepository,
 )
+from real_estate.infrastructure.persistence.repositories.notification_channel_repository import (
+    SqlAlchemyNotificationChannelRepository,
+)
+from real_estate.infrastructure.persistence.repositories.notification_repository import (
+    SqlAlchemyNotificationRepository,
+)
 from real_estate.infrastructure.persistence.repositories.portal_listing_repository import (
     SqlAlchemyPortalListingRepository,
 )
@@ -40,9 +46,14 @@ class SqlAlchemyUnitOfWork:
     portal_listings: SqlAlchemyPortalListingRepository
     search_cache: SqlAlchemySearchCacheRepository
     search_executions: SqlAlchemySearchExecutionRepository
+    notification_channels: SqlAlchemyNotificationChannelRepository
+    notifications: SqlAlchemyNotificationRepository
 
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    def __init__(
+        self, session_factory: sessionmaker[Session], *, encryption_key: str | None = None
+    ) -> None:
         self._session_factory = session_factory
+        self._encryption_key = encryption_key
 
     def __enter__(self) -> SqlAlchemyUnitOfWork:
         self._session = self._session_factory()
@@ -52,6 +63,10 @@ class SqlAlchemyUnitOfWork:
         self.portal_listings = SqlAlchemyPortalListingRepository(self._session)
         self.search_cache = SqlAlchemySearchCacheRepository(self._session)
         self.search_executions = SqlAlchemySearchExecutionRepository(self._session)
+        self.notification_channels = SqlAlchemyNotificationChannelRepository(
+            self._session, encryption_key=self._encryption_key
+        )
+        self.notifications = SqlAlchemyNotificationRepository(self._session)
         return self
 
     def __exit__(

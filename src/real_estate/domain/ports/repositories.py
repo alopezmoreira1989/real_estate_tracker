@@ -14,8 +14,17 @@ from enum import StrEnum
 from typing import Any, Protocol
 
 from real_estate.domain.model.alert import SearchAlert
-from real_estate.domain.model.identifiers import AlertId, PropertyId, UserId
+from real_estate.domain.model.identifiers import (
+    AlertId,
+    MatchId,
+    NotificationChannelId,
+    NotificationId,
+    PropertyId,
+    UserId,
+)
 from real_estate.domain.model.match import AlertMatch
+from real_estate.domain.model.notification import Notification
+from real_estate.domain.model.notification_channel import NotificationChannel
 from real_estate.domain.model.property import Property
 
 
@@ -50,9 +59,16 @@ class MatchRepository(Protocol):
     re-evaluation of the same candidates never double-persists a match.
     """
 
-    def add_if_new(self, match: AlertMatch) -> bool:
-        """Persist ``match`` if it doesn't already exist; return whether it was new."""
+    def add_if_new(self, match: AlertMatch) -> MatchId | None:
+        """Persist ``match`` if it doesn't already exist.
+
+        Returns the newly persisted match's id, or ``None`` if it already
+        existed — callers (e.g. notification enqueueing) need the real id of
+        a *new* match, not just a new/duplicate flag.
+        """
         ...
+
+    def get(self, match_id: MatchId) -> AlertMatch | None: ...
 
 
 class PortalListingRepository(Protocol):
@@ -79,6 +95,63 @@ class PortalListingRepository(Protocol):
         content_hash: str,
         scraped_at: datetime,
     ) -> None: ...
+
+    def get_url_for_property(self, property_id: PropertyId) -> str | None:
+        """Return the originating listing url for ``property_id``, if known.
+
+        Used to build a notification message's link (doc08 §3) without the
+        domain ``Property`` itself needing to carry a portal-specific url.
+        """
+        ...
+
+
+class NotificationChannelRepository(Protocol):
+    """Persistence of a user's :class:`NotificationChannel` delivery targets.
+
+    Adapters encrypt/decrypt ``target`` at rest transparently (CLAUDE.md §14)
+    — the domain always sees a plain value.
+    """
+
+    def add(self, channel: NotificationChannel) -> None:
+        """Upsert ``channel`` by id."""
+        ...
+
+    def get(self, channel_id: NotificationChannelId) -> NotificationChannel | None: ...
+
+    def list_enabled_for_user(self, user_id: UserId) -> Sequence[NotificationChannel]: ...
+
+
+class NotificationRepository(Protocol):
+    """The notification outbox (doc03, doc08 §3)."""
+
+    def enqueue(
+        self, match_id: MatchId, channel_id: NotificationChannelId, *, now: datetime
+    ) -> bool:
+        """Enqueue a ``PENDING`` notification for ``(match_id, channel_id)``.
+
+        Idempotent: returns whether it was newly enqueued.
+        """
+        ...
+
+    def list_pending(self, limit: int) -> Sequence[Notification]: ...
+
+    def mark_sent(self, notification_id: NotificationId, *, sent_at: datetime) -> None: ...
+
+    def mark_failed(
+        self,
+        notification_id: NotificationId,
+        *,
+        error: str,
+        max_attempts: int,
+        now: datetime,
+    ) -> None:
+        """Record a failed delivery attempt.
+
+        Increments ``attempts`` and sets ``last_error``; transitions to
+        ``FAILED`` once ``attempts >= max_attempts``, otherwise stays
+        ``PENDING`` for the next scheduled dispatcher run to retry.
+        """
+        ...
 
 
 class SearchExecutionStatus(StrEnum):

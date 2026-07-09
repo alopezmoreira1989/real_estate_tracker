@@ -2,13 +2,10 @@
 
 plan -> for each deduplicated query: cache-or-scrape, content-hash-or-
 normalize, upsert -> evaluate every alert sharing that query -> persist
-matches (docs/architecture/08-sequence-diagrams.md §2).
-
-Notification enqueueing is **not** part of this use-case — the outbox
-doesn't exist until Phase 6 (#29); this stops at persisting AlertMatches,
-matching issue #28's acceptance criteria exactly. A scraper failure for one
-query is isolated (recorded, then skipped) so the cycle continues with
-every other query (doc08 §4, driver D7).
+matches and enqueue notifications for genuinely new ones (docs/architecture/
+08-sequence-diagrams.md §2). A scraper failure for one query is isolated
+(recorded, then skipped) so the cycle continues with every other query
+(doc08 §4, driver D7).
 """
 
 from __future__ import annotations
@@ -167,8 +164,11 @@ class RunAlertCycle:
         created = 0
         for alert in alerts:
             for match in self._engine.evaluate(alert, candidates, now=now):
-                if uow.matches.add_if_new(match):
+                match_id = uow.matches.add_if_new(match)
+                if match_id is not None:
                     created += 1
+                    for channel in uow.notification_channels.list_enabled_for_user(alert.user_id):
+                        uow.notifications.enqueue(match_id, channel.id, now=now)
             alert.mark_run(now=now)
             uow.alerts.add(alert)
         return created

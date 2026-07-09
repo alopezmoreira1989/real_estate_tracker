@@ -20,11 +20,24 @@ class NotificationMessage:
     url: str | None = None
 
 
+class NotifierError(Exception):
+    """A channel-agnostic delivery failure.
+
+    Adapters wrap their transport-specific errors (e.g. ``httpx.HTTPError``)
+    into this at the port boundary (CLAUDE.md §12), so callers like
+    ``DispatchNotifications`` catch one domain-meaningful type instead of
+    depending on any adapter's third-party exception hierarchy.
+    """
+
+
 class Notifier(Protocol):
     """Delivers a message to a single configured channel target."""
 
     channel_type: str
 
     def send(self, target: str, message: NotificationMessage) -> None:
-        """Deliver ``message`` to ``target`` (e.g. a Telegram chat id)."""
+        """Deliver ``message`` to ``target`` (e.g. a Telegram chat id).
+
+        Raises :class:`NotifierError` on failure.
+        """
         ...

@@ -16,3 +16,5 @@ class Settings(BaseSettings):
     environment: Environment = Environment.DEV
     log_level: str = "INFO"
     database_url: str = "sqlite:///./real_estate.db"
+    telegram_bot_token: str | None = None
+    notification_encryption_key: str | None = None

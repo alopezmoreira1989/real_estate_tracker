@@ -150,10 +150,15 @@ the "simpler alternative rejected because…" note.
 |-------|------|
 | Domain | Pure Python 3.12, `dataclasses`/`enum` (no framework deps) |
 | Application | Python, Pydantic (DTOs/validation at boundaries) |
-| Infrastructure | SQLAlchemy 2.x + Alembic, APScheduler, httpx, BeautifulSoup, Playwright (only if a portal requires JS), python-telegram-bot |
+| Infrastructure | SQLAlchemy 2.x + Alembic, APScheduler, httpx, BeautifulSoup, Playwright (only if a portal requires JS) |
 | Persistence | SQLite (MVP) → PostgreSQL (later); same code via SQLAlchemy |
 | Presentation | Typer CLI (MVP) → FastAPI + Streamlit (later) |
-| Cross-cutting | `structlog` logging, `pydantic-settings` config, `tenacity` retries |
+| Cross-cutting | `structlog` logging, `pydantic-settings` config, `tenacity` retries, `cryptography` (Fernet) for channel-secret encryption at rest |
+
+> **Phase 6 supersession:** `TelegramNotifier` sends via a plain `httpx` POST to the Bot API
+> (`sendMessage`), not `python-telegram-bot` — that library is async-first, while the rest of the
+> scraping/notification infrastructure (e.g. `IdealistaScraper`) is synchronous `httpx`. The
+> Telegram *channel* choice itself is unchanged (ADR-005); this only settles the client library.
 | Quality | pytest, ruff, black, mypy, import-linter, pre-commit, GitHub Actions, Docker |
 
 ---
