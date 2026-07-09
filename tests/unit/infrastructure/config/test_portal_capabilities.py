@@ -16,3 +16,4 @@ def test_idealista_declares_positive_politeness_settings() -> None:
     assert capabilities.rate_limit_per_second > 0
     assert capabilities.circuit_breaker_failure_threshold >= 1
     assert capabilities.circuit_breaker_cooldown_seconds > 0
+    assert capabilities.max_concurrency >= 1

@@ -29,5 +29,9 @@ PORTAL_CAPABILITIES: dict[str, PortalCapabilities] = {
         rate_limit_per_second=0.5,
         circuit_breaker_failure_threshold=5,
         circuit_breaker_cooldown_seconds=60.0,
+        # Explicit (not just relying on the default): kept at 1 until
+        # Idealista's real-world tolerance for concurrent requests is known
+        # (docs/architecture/06-search-scheduler.md §5-§6).
+        max_concurrency=1,
     ),
 }

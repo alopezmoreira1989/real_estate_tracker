@@ -34,3 +34,8 @@ class PortalCapabilities:
     rate_limit_per_second: float
     circuit_breaker_failure_threshold: int
     circuit_breaker_cooldown_seconds: float
+    # Bounds how many distinct query signatures for this portal RunAlertCycle
+    # scrapes concurrently (doc06 §5-§6). Defaults to 1 (no behavior change
+    # from the fully-sequential Phase 5 execution) until a portal's own
+    # capacity is known to safely tolerate more.
+    max_concurrency: int = 1

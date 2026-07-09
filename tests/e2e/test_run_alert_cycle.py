@@ -5,12 +5,15 @@ network), matching issue #28's acceptance criteria directly.
 
 from __future__ import annotations
 
+import threading
+import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
+from real_estate.application.dto import RunAlertCycleReport
 from real_estate.application.ports import Clock, PortalCapabilities
 from real_estate.application.services.search_planner import SearchPlanner
 from real_estate.application.use_cases.run_alert_cycle import RunAlertCycle
@@ -108,6 +111,72 @@ def _matching_raw_listing(external_id: str = "1") -> RawListing:
             "descripcion": "Suelo urbanizable con acceso a agua",
         },
     )
+
+
+def _land_alert_for_province(
+    user_id: UserId, province_ine: str, *, price_per_m2_lte: str = "20"
+) -> SearchAlert:
+    conditions = RuleGroup(
+        GroupOperator.ALL,
+        (
+            AlertCondition("province", Operator.EQ, province_ine),
+            AlertCondition("property_type", Operator.EQ, "LAND"),
+            AlertCondition("price_per_m2", Operator.LTE, Decimal(price_per_m2_lte)),
+        ),
+    )
+    return SearchAlert.create(
+        id=AlertId(uuid4()),
+        user_id=user_id,
+        name=f"Land in province {province_ine}",
+        portal_slugs=frozenset({"idealista"}),
+        frequency_seconds=900,
+        conditions=conditions,
+        now=NOW,
+    )
+
+
+def _matching_raw_listing_for_province(province_label: str, external_id: str) -> RawListing:
+    return RawListing(
+        portal_slug="idealista",
+        external_id=external_id,
+        url=f"https://idealista.com/inmueble/{external_id}/",
+        scraped_at=NOW,
+        raw={
+            "precio": "60.000 €",
+            "superficie": "3.000 m²",
+            "tipo": "Suelo",
+            "operacion": "Venta",
+            "provincia": province_label,
+            "titulo": f"Finca en {province_label}",
+            "descripcion": "Suelo urbanizable",
+        },
+    )
+
+
+@dataclass
+class _ConcurrencyTrackingScraper:
+    """Records how many concurrent ``fetch`` calls were in flight at once —
+    proves whether RunAlertCycle's per-portal concurrency cap (#33) actually
+    bounds simultaneous scraping, not just that it doesn't crash.
+    """
+
+    portal_slug = "idealista"
+    listings_by_province: dict[str, Sequence[RawListing]]
+    delay_seconds: float = 0.05
+    _lock: threading.Lock = field(default_factory=threading.Lock)
+    _current: int = 0
+    peak_concurrent: int = 0
+
+    def fetch(self, query: PortalQuery) -> Sequence[RawListing]:
+        with self._lock:
+            self._current += 1
+            self.peak_concurrent = max(self.peak_concurrent, self._current)
+        try:
+            time.sleep(self.delay_seconds)
+            return self.listings_by_province[query.params["province"]]
+        finally:
+            with self._lock:
+                self._current -= 1
 
 
 def _make_cycle(persistence, scraper: _FakeScraper, *, clock: Clock | None = None) -> RunAlertCycle:
@@ -234,3 +303,81 @@ def test_ten_alerts_on_the_same_search_scrape_idealista_once(persistence) -> Non
 
     assert scraper.calls == 1  # one scrape, fanned out to all ten alerts (D3)
     assert report.matches_created == 10
+
+
+def test_max_concurrency_of_one_keeps_two_signatures_strictly_sequential(persistence) -> None:
+    alert_a = _land_alert_for_province(persistence.user_id, "36")
+    alert_b = _land_alert_for_province(persistence.user_id, "27")
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert_a)
+        uow.alerts.add(alert_b)
+        uow.commit()
+
+    scraper = _ConcurrencyTrackingScraper(
+        listings_by_province={
+            "36": [_matching_raw_listing_for_province("Pontevedra", "1")],
+            "27": [_matching_raw_listing_for_province("Lugo", "2")],
+        }
+    )
+    engine = AlertEngine(SpecificationFactory(default_field_registry()))
+    planner = SearchPlanner({"idealista": _CAPABILITIES})
+    cycle = RunAlertCycle(
+        uow_factory=persistence.new_uow,
+        planner=planner,
+        scraper_for_portal=lambda _slug: scraper,
+        normalizer_for_portal=lambda _slug: IdealistaNormalizer(),
+        engine=engine,
+        clock=_FixedClock(NOW),
+        max_concurrency_for_portal=lambda _slug: 1,
+    )
+
+    report = cycle.run([alert_a, alert_b])
+
+    assert report.queries_planned == 2
+    assert report.matches_created == 2
+    assert scraper.peak_concurrent == 1  # the cap of 1 actually serialized the two scrapes
+
+
+def test_max_concurrency_of_two_lets_two_signatures_overlap(persistence) -> None:
+    alert_a = _land_alert_for_province(persistence.user_id, "36")
+    alert_b = _land_alert_for_province(persistence.user_id, "27")
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert_a)
+        uow.alerts.add(alert_b)
+        uow.commit()
+
+    scraper = _ConcurrencyTrackingScraper(
+        listings_by_province={
+            "36": [_matching_raw_listing_for_province("Pontevedra", "1")],
+            "27": [_matching_raw_listing_for_province("Lugo", "2")],
+        }
+    )
+    engine = AlertEngine(SpecificationFactory(default_field_registry()))
+    planner = SearchPlanner({"idealista": _CAPABILITIES})
+    cycle = RunAlertCycle(
+        uow_factory=persistence.new_uow,
+        planner=planner,
+        scraper_for_portal=lambda _slug: scraper,
+        normalizer_for_portal=lambda _slug: IdealistaNormalizer(),
+        engine=engine,
+        clock=_FixedClock(NOW),
+        max_concurrency_for_portal=lambda _slug: 2,
+    )
+
+    report = cycle.run([alert_a, alert_b])
+
+    assert report.queries_planned == 2
+    assert report.matches_created == 2
+    assert scraper.peak_concurrent == 2  # both signatures actually ran concurrently
+
+
+def test_an_empty_due_set_returns_a_zeroed_report_without_error(persistence) -> None:
+    scraper = _FakeScraper([_matching_raw_listing()])
+    cycle = _make_cycle(persistence, scraper)
+
+    report = cycle.run([])
+
+    assert report == RunAlertCycleReport(
+        queries_planned=0, queries_succeeded=0, queries_failed=0, matches_created=0
+    )
+    assert scraper.calls == 0
