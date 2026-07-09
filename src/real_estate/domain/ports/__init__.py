@@ -5,7 +5,7 @@ implementations (Dependency Inversion).
 """
 
 from real_estate.domain.ports.normalizer import NormalizationIssue, NormalizationResult, Normalizer
-from real_estate.domain.ports.notifier import NotificationMessage, Notifier
+from real_estate.domain.ports.notifier import NotificationMessage, Notifier, NotifierError
 from real_estate.domain.ports.repositories import (
     AlertRepository,
     MatchRepository,
@@ -30,6 +30,7 @@ __all__ = [
     "NotificationMessage",
     "NotificationRepository",
     "Notifier",
+    "NotifierError",
     "PortalListingRepository",
     "PortalQuery",
     "PropertyRepository",

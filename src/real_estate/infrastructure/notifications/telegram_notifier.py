@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import httpx
 
-from real_estate.domain.ports.notifier import NotificationMessage
+from real_estate.domain.ports.notifier import NotificationMessage, NotifierError
 
 _TELEGRAM_API_BASE = "https://api.telegram.org"
 
@@ -25,15 +25,18 @@ class TelegramNotifier:
     def send(self, target: str, message: NotificationMessage) -> None:
         """Post ``message`` to the Telegram chat id ``target``.
 
-        Raises ``httpx.HTTPStatusError`` on a non-2xx response, or another
-        ``httpx.HTTPError`` on a transport failure — the dispatcher catches
-        these to record a failed delivery attempt (issue #30).
+        Raises :class:`NotifierError` on a non-2xx response or a transport
+        failure — the dispatcher (#31) catches this to record a failed
+        delivery attempt.
         """
-        response = self._client.post(
-            f"{_TELEGRAM_API_BASE}/bot{self._bot_token}/sendMessage",
-            json={"chat_id": target, "text": _format_text(message)},
-        )
-        response.raise_for_status()
+        try:
+            response = self._client.post(
+                f"{_TELEGRAM_API_BASE}/bot{self._bot_token}/sendMessage",
+                json={"chat_id": target, "text": _format_text(message)},
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise NotifierError(str(exc)) from exc
 
 
 def _format_text(message: NotificationMessage) -> str:
