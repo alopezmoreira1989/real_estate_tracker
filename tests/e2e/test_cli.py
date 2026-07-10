@@ -248,7 +248,8 @@ def test_list_matches_and_dispatch_after_a_cycle(persistence) -> None:
 
     matches_result = runner.invoke(app, ["list-matches"])
     assert matches_result.exit_code == 0
-    assert "alert=" in matches_result.stdout
+    assert "Finca con agua" in matches_result.stdout
+    assert "idealista.com" in matches_result.stdout
 
     dispatch_result = runner.invoke(app, ["dispatch"])
     assert dispatch_result.exit_code == 0

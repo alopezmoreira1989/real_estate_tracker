@@ -73,3 +73,17 @@ def test_deactivate_and_mark_run() -> None:
     assert alert.is_active is False
     alert.mark_run(now=later)
     assert alert.last_run_at == later
+
+
+def test_set_frequency_updates_it_and_bumps_updated_at() -> None:
+    alert = _create()
+    later = datetime(2026, 7, 5, tzinfo=UTC)
+    alert.set_frequency(14400, now=later)
+    assert alert.frequency_seconds == 14400
+    assert alert.updated_at == later
+
+
+def test_set_frequency_rejects_too_frequent() -> None:
+    alert = _create()
+    with pytest.raises(InvalidAlertError):
+        alert.set_frequency(30, now=NOW)

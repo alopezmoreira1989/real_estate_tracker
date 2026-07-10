@@ -1,10 +1,24 @@
 """Composition root: the only module allowed to import every concrete adapter and wire them
-(via dependency injection) into the use-cases that the presentation layer calls.
+(via dependency injection) into the use-cases the presentation layer calls.
+
+``build_dependencies()`` does all the wiring once, framework-agnostic; both presentation surfaces
+consume the exact same use-case instances from it — literally "runs against the same application
+layer" (issue #35):
+
+- ``build_app()`` (Typer/CLI) wraps it in a ``CliContext``.
+- ``presentation/web/app.py`` (Streamlit) calls it directly. Streamlit's own script *is* the
+  process entry point (``streamlit run ...``) — there is no ``__main__.py``-equivalent caller it
+  will accept — so that module importing ``real_estate.composition`` is a framework-forced
+  exception to the pattern the CLI follows (composition imports presentation, not the reverse).
+  It still satisfies the enforced import-linter contract, which forbids presentation importing
+  ``real_estate.infrastructure``, not ``real_estate.composition``.
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import typer
 
@@ -16,11 +30,13 @@ from real_estate.application.use_cases.dispatch_notifications import DispatchNot
 from real_estate.application.use_cases.list_alerts import ListAlerts
 from real_estate.application.use_cases.list_channels import ListChannels
 from real_estate.application.use_cases.list_matches import ListMatches
+from real_estate.application.use_cases.list_search_executions import ListSearchExecutions
 from real_estate.application.use_cases.planner_tick import PlannerTick
 from real_estate.application.use_cases.run_alert_cycle import RunAlertCycle
+from real_estate.application.use_cases.update_alert import UpdateAlert
 from real_estate.domain.model.identifiers import UserId
 from real_estate.domain.ports import Notifier, UnitOfWork
-from real_estate.domain.rules import SpecificationFactory
+from real_estate.domain.rules import FieldRegistry, SpecificationFactory
 from real_estate.domain.rules import default_registry as default_field_registry
 from real_estate.domain.services.alert_engine import AlertEngine
 from real_estate.infrastructure.clock import SystemClock
@@ -47,8 +63,26 @@ _DEFAULT_PORTAL_CAPABILITIES = PortalCapabilities(
 _TELEGRAM_MESSAGES_PER_SECOND = 1.0
 
 
-def build_app() -> typer.Typer:
-    """Wire every adapter and use-case, and return the runnable Typer app."""
+@dataclass(frozen=True, slots=True)
+class Dependencies:
+    """Every use-case + shared dependency a presentation surface might need."""
+
+    user_id: Callable[[], UserId]
+    field_registry: FieldRegistry
+    create_alert: CreateAlert
+    update_alert: UpdateAlert
+    list_alerts: ListAlerts
+    list_matches: ListMatches
+    create_channel: CreateChannel
+    list_channels: ListChannels
+    list_search_executions: ListSearchExecutions
+    planner_tick: PlannerTick
+    dispatch_notifications: DispatchNotifications
+    run_scheduler_forever: Callable[[], None]
+
+
+def build_dependencies() -> Dependencies:
+    """Wire every adapter and use-case. The one place both presentation surfaces share."""
     settings = Settings()
     configure_logging(settings.environment, settings.log_level)
 
@@ -56,10 +90,8 @@ def build_app() -> typer.Typer:
     session_factory = create_session_factory(engine)
 
     def resolve_user_id() -> UserId:
-        # Lazy: only actual commands need the DB (Typer/Click's --help
-        # short-circuits before a command body runs, but this whole function
-        # runs before Typer parses argv, so an eager call here would touch
-        # the DB unconditionally on every invocation, including --help).
+        # Lazy: resolving touches the DB (ensure_default_user); callers decide when that's
+        # appropriate (e.g. the CLI must not do it just to print --help).
         return ensure_default_user(session_factory, settings.owner_email)
 
     def uow_factory() -> UnitOfWork:
@@ -101,12 +133,6 @@ def build_app() -> typer.Typer:
         clock=clock,
     )
 
-    create_alert = CreateAlert(uow_factory=uow_factory, field_registry=field_registry, clock=clock)
-    create_channel = CreateChannel(uow_factory=uow_factory)
-    list_alerts = ListAlerts(uow_factory=uow_factory)
-    list_matches = ListMatches(uow_factory=uow_factory)
-    list_channels = ListChannels(uow_factory=uow_factory)
-
     scheduler = build_scheduler(
         planner_tick=planner_tick.run,
         dispatch_notifications=dispatch_notifications.run,
@@ -123,15 +149,38 @@ def build_app() -> typer.Typer:
         except (KeyboardInterrupt, SystemExit):
             scheduler.shutdown()
 
-    cli_context = CliContext(
+    return Dependencies(
         user_id=resolve_user_id,
-        create_alert=create_alert,
-        list_alerts=list_alerts,
-        list_matches=list_matches,
-        create_channel=create_channel,
-        list_channels=list_channels,
+        field_registry=field_registry,
+        create_alert=CreateAlert(
+            uow_factory=uow_factory, field_registry=field_registry, clock=clock
+        ),
+        update_alert=UpdateAlert(
+            uow_factory=uow_factory, field_registry=field_registry, clock=clock
+        ),
+        list_alerts=ListAlerts(uow_factory=uow_factory),
+        list_matches=ListMatches(uow_factory=uow_factory),
+        create_channel=CreateChannel(uow_factory=uow_factory),
+        list_channels=ListChannels(uow_factory=uow_factory),
+        list_search_executions=ListSearchExecutions(uow_factory=uow_factory),
         planner_tick=planner_tick,
         dispatch_notifications=dispatch_notifications,
         run_scheduler_forever=run_scheduler_forever,
+    )
+
+
+def build_app() -> typer.Typer:
+    """Wire everything and return the runnable Typer app (the CLI's entry point)."""
+    deps = build_dependencies()
+    cli_context = CliContext(
+        user_id=deps.user_id,
+        create_alert=deps.create_alert,
+        list_alerts=deps.list_alerts,
+        list_matches=deps.list_matches,
+        create_channel=deps.create_channel,
+        list_channels=deps.list_channels,
+        planner_tick=deps.planner_tick,
+        dispatch_notifications=deps.dispatch_notifications,
+        run_scheduler_forever=deps.run_scheduler_forever,
     )
     return build_cli_app(cli_context)

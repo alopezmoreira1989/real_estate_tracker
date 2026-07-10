@@ -97,6 +97,14 @@ class SearchAlert:
         self.portal_slugs = portal_slugs
         self.updated_at = now
 
+    def set_frequency(self, frequency_seconds: int, *, now: datetime) -> None:
+        if frequency_seconds < MIN_FREQUENCY_SECONDS:
+            raise InvalidAlertError(
+                f"frequency must be >= {MIN_FREQUENCY_SECONDS}s, got {frequency_seconds}"
+            )
+        self.frequency_seconds = frequency_seconds
+        self.updated_at = now
+
     def activate(self, *, now: datetime) -> None:
         self.is_active = True
         self.updated_at = now
