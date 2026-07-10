@@ -238,6 +238,7 @@ class SearchExecutionModel(Base):
     status: Mapped[str] = mapped_column(String(16))
     listings_found: Mapped[int] = mapped_column(Integer, default=0)
     listings_new: Mapped[int] = mapped_column(Integer, default=0)
+    normalization_issues: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

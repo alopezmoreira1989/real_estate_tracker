@@ -267,11 +267,69 @@ def test_search_execution_record_does_not_raise(persistence) -> None:
             status=SearchExecutionStatus.SUCCESS,
             listings_found=5,
             listings_new=2,
+            normalization_issues=1,
             error=None,
             started_at=NOW,
             finished_at=NOW + timedelta(seconds=3),
         )
         uow.commit()
+
+
+def test_search_execution_list_recent_returns_newest_first(persistence) -> None:
+    with persistence.new_uow() as uow:
+        uow.search_executions.record(
+            portal_slug="idealista",
+            query_signature="sig-old",
+            status=SearchExecutionStatus.SUCCESS,
+            listings_found=3,
+            listings_new=1,
+            normalization_issues=0,
+            error=None,
+            started_at=NOW,
+            finished_at=NOW + timedelta(seconds=1),
+        )
+        uow.search_executions.record(
+            portal_slug="idealista",
+            query_signature="sig-new",
+            status=SearchExecutionStatus.FAILED,
+            listings_found=0,
+            listings_new=0,
+            normalization_issues=0,
+            error="portal unreachable",
+            started_at=NOW + timedelta(minutes=5),
+            finished_at=NOW + timedelta(minutes=5, seconds=1),
+        )
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        recent = uow.search_executions.list_recent(limit=10)
+
+    assert [e.query_signature for e in recent] == ["sig-new", "sig-old"]
+    assert recent[0].status is SearchExecutionStatus.FAILED
+    assert recent[0].error == "portal unreachable"
+    assert recent[0].portal_slug == "idealista"
+
+
+def test_search_execution_list_recent_respects_limit(persistence) -> None:
+    with persistence.new_uow() as uow:
+        for i in range(3):
+            uow.search_executions.record(
+                portal_slug="idealista",
+                query_signature=f"sig-{i}",
+                status=SearchExecutionStatus.SUCCESS,
+                listings_found=1,
+                listings_new=1,
+                normalization_issues=0,
+                error=None,
+                started_at=NOW + timedelta(minutes=i),
+                finished_at=NOW + timedelta(minutes=i, seconds=1),
+            )
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        recent = uow.search_executions.list_recent(limit=2)
+
+    assert len(recent) == 2
 
 
 def _price_history_count(uow, property_id: PropertyId) -> int:

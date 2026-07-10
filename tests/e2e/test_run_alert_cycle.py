@@ -381,3 +381,37 @@ def test_an_empty_due_set_returns_a_zeroed_report_without_error(persistence) -> 
         queries_planned=0, queries_succeeded=0, queries_failed=0, matches_created=0
     )
     assert scraper.calls == 0
+
+
+def test_unmapped_vocabulary_is_counted_on_the_search_execution(persistence) -> None:
+    """A listing with unmapped property_type/province still gets ingested
+    (falls back to OTHER/UNKNOWN, doc05 §3) but the resulting issues are
+    counted onto the SearchExecution row for the dashboard's health view
+    (doc05 §6)."""
+    alert = _land_alert(persistence.user_id)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    unmapped_listing = RawListing(
+        portal_slug="idealista",
+        external_id="33333333",
+        url="https://www.idealista.com/inmueble/33333333/",
+        scraped_at=NOW,
+        raw={
+            "precio": "50.000 €",
+            "superficie": "120 m²",
+            "tipo": "Iglú",
+            "operacion": "Venta",
+            "provincia": "Atlantis",
+            "titulo": "Vivienda peculiar",
+        },
+    )
+    scraper = _FakeScraper([unmapped_listing])
+    cycle = _make_cycle(persistence, scraper)
+
+    cycle.run([alert])
+
+    with persistence.new_uow() as uow:
+        [execution] = uow.search_executions.list_recent(limit=10)
+    assert execution.normalization_issues == 2  # unmapped property_type + unmapped province

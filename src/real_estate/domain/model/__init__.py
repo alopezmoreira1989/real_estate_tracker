@@ -30,6 +30,7 @@ from real_estate.domain.model.money import Money
 from real_estate.domain.model.notification import Notification, NotificationStatus
 from real_estate.domain.model.notification_channel import ChannelType, NotificationChannel
 from real_estate.domain.model.property import Property
+from real_estate.domain.model.search_execution import SearchExecution, SearchExecutionStatus
 
 __all__ = [
     "AlertCondition",
@@ -58,5 +59,7 @@ __all__ = [
     "PropertyId",
     "RuleGroup",
     "SearchAlert",
+    "SearchExecution",
+    "SearchExecutionStatus",
     "UserId",
 ]

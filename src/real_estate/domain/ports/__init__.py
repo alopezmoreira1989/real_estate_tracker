@@ -14,6 +14,7 @@ from real_estate.domain.ports.repositories import (
     PortalListingRepository,
     PropertyRepository,
     SearchCacheRepository,
+    SearchExecution,
     SearchExecutionRepository,
     SearchExecutionStatus,
 )
@@ -37,6 +38,7 @@ __all__ = [
     "RawListing",
     "Scraper",
     "SearchCacheRepository",
+    "SearchExecution",
     "SearchExecutionRepository",
     "SearchExecutionStatus",
     "UnitOfWork",
