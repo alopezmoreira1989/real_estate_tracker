@@ -21,6 +21,8 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "tenacity>=8.5",
     "cryptography>=43.0",
+    "apscheduler>=3.10",
+    "typer>=0.12",
 ]
 
 [project.urls]
@@ -64,6 +66,11 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 [tool.ruff.lint.isort]
 known-first-party = ["real_estate"]
 
+[tool.ruff.lint.per-file-ignores]
+# B008 (no function calls in argument defaults) is a false positive for Typer's own idiom —
+# `typer.Option(...)` as a parameter default is how Typer declares CLI options.
+"src/real_estate/presentation/cli/*.py" = ["B008"]
+
 # ---------------------------------------------------------------------------
 # Format (black) — authoritative; do not hand-format around it (CLAUDE.md §4).
 # ---------------------------------------------------------------------------
@@ -82,6 +89,11 @@ explicit_package_bases = true
 files = ["src"]
 # Alembic migration environment/scripts are operational, not type-checked.
 exclude = ["persistence/migrations/"]
+
+# APScheduler ships no type stubs and no types-apscheduler package exists on PyPI.
+[[tool.mypy.overrides]]
+module = "apscheduler.*"
+ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
 # Tests (pytest + coverage) — CLAUDE.md §8: unit/integration/e2e pyramid, mirrors src/ path-for-path.

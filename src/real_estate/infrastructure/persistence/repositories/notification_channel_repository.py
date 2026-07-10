@@ -51,6 +51,12 @@ class SqlAlchemyNotificationChannelRepository:
         ).scalars()
         return [self._to_domain(model) for model in models]
 
+    def list_for_user(self, user_id: UserId) -> Sequence[NotificationChannel]:
+        models = self._session.execute(
+            select(NotificationChannelModel).where(NotificationChannelModel.user_id == user_id)
+        ).scalars()
+        return [self._to_domain(model) for model in models]
+
     def _to_domain(self, model: NotificationChannelModel) -> NotificationChannel:
         config = decrypt_json(model.config["encrypted"], key=self._encryption_key)
         return NotificationChannel(

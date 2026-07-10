@@ -2,11 +2,14 @@
 
 Opens after ``failure_threshold`` consecutive failures; half-opens after
 ``cooldown_seconds`` to test whether the portal has recovered (driver D7,
-docs/architecture/06-search-scheduler.md §5).
+docs/architecture/06-search-scheduler.md §5). One instance is shared by every
+concurrent worker scraping a given portal (#33's per-portal worker pool), so
+its mutable state is guarded by a lock rather than assumed single-threaded.
 """
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from enum import Enum, auto
@@ -38,9 +41,14 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._consecutive_failures = 0
         self._opened_at: float | None = None
+        self._lock = threading.Lock()
 
     @property
     def state(self) -> CircuitState:
+        with self._lock:
+            return self._state_locked()
+
+    def _state_locked(self) -> CircuitState:
         if (
             self._state is CircuitState.OPEN
             and self._opened_at is not None
@@ -51,15 +59,18 @@ class CircuitBreaker:
 
     def allow(self) -> bool:
         """Whether a request may be attempted right now."""
-        return self.state is not CircuitState.OPEN
+        with self._lock:
+            return self._state_locked() is not CircuitState.OPEN
 
     def record_success(self) -> None:
-        self._consecutive_failures = 0
-        self._state = CircuitState.CLOSED
-        self._opened_at = None
+        with self._lock:
+            self._consecutive_failures = 0
+            self._state = CircuitState.CLOSED
+            self._opened_at = None
 
     def record_failure(self) -> None:
-        self._consecutive_failures += 1
-        if self._consecutive_failures >= self._threshold:
-            self._state = CircuitState.OPEN
-            self._opened_at = self._clock()
+        with self._lock:
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self._threshold:
+                self._state = CircuitState.OPEN
+                self._opened_at = self._clock()

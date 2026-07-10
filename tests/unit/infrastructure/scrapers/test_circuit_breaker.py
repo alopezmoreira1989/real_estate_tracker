@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 
 from real_estate.infrastructure.scrapers.circuit_breaker import CircuitBreaker, CircuitState
@@ -71,3 +73,18 @@ def test_rejects_invalid_thresholds() -> None:
         CircuitBreaker(failure_threshold=0, cooldown_seconds=5)
     with pytest.raises(ValueError):
         CircuitBreaker(failure_threshold=1, cooldown_seconds=0)
+
+
+def test_concurrent_record_failure_never_exceeds_the_threshold_count() -> None:
+    """Shared by every worker scraping one portal (#33's worker pool) — a
+    torn read/write on ``_consecutive_failures`` would let it under- or
+    over-count under concurrency; a lock makes each increment atomic."""
+    breaker = CircuitBreaker(failure_threshold=1000, cooldown_seconds=10)
+    threads = [threading.Thread(target=breaker.record_failure) for _ in range(200)]
+
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert breaker._consecutive_failures == 200  # noqa: SLF001

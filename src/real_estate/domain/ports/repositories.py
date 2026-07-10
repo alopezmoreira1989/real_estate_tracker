@@ -37,6 +37,13 @@ class AlertRepository(Protocol):
 
     def list_for_user(self, user_id: UserId) -> Sequence[SearchAlert]: ...
 
+    def list_due(self, *, now: datetime) -> Sequence[SearchAlert]:
+        """Active alerts whose ``last_run_at + frequency_seconds <= now``
+        (or that have never run) — the scheduler's due-set (doc06 §5), backed
+        by the ``(is_active, last_run_at)`` index (doc03).
+        """
+        ...
+
 
 class PropertyRepository(Protocol):
     """Persistence of canonical :class:`Property` entities.
@@ -69,6 +76,13 @@ class MatchRepository(Protocol):
         ...
 
     def get(self, match_id: MatchId) -> AlertMatch | None: ...
+
+    def list_recent_for_user(self, user_id: UserId, *, limit: int) -> Sequence[AlertMatch]:
+        """Most recent matches across every alert owned by ``user_id``, scoped
+        via ``search_alerts.user_id`` (matches carry no ``user_id`` of their
+        own — multi-tenant scoping, CLAUDE.md §14).
+        """
+        ...
 
 
 class PortalListingRepository(Protocol):
@@ -119,6 +133,13 @@ class NotificationChannelRepository(Protocol):
     def get(self, channel_id: NotificationChannelId) -> NotificationChannel | None: ...
 
     def list_enabled_for_user(self, user_id: UserId) -> Sequence[NotificationChannel]: ...
+
+    def list_for_user(self, user_id: UserId) -> Sequence[NotificationChannel]:
+        """Every channel owned by ``user_id`` (enabled or not) — for
+        operator/CLI listing, unlike :meth:`list_enabled_for_user` which the
+        dispatcher uses to select delivery targets.
+        """
+        ...
 
 
 class NotificationRepository(Protocol):

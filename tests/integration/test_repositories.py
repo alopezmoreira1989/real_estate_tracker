@@ -1,6 +1,6 @@
 """Integration tests: domain <-> SQLite round-trips through the repositories."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -149,6 +149,57 @@ def test_list_for_user_returns_only_that_users_alerts(persistence) -> None:
 
     assert [a.id for a in mine] == [alert.id]
     assert others == []
+
+
+def test_list_due_returns_a_never_run_active_alert(persistence) -> None:
+    alert = _alert(persistence.user_id)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        due = uow.alerts.list_due(now=NOW)
+
+    assert [a.id for a in due] == [alert.id]
+
+
+def test_list_due_excludes_an_alert_run_recently(persistence) -> None:
+    alert = _alert(persistence.user_id)
+    alert.mark_run(now=NOW)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        due = uow.alerts.list_due(now=NOW + timedelta(seconds=1))
+
+    assert due == []
+
+
+def test_list_due_includes_an_alert_whose_frequency_has_elapsed(persistence) -> None:
+    alert = _alert(persistence.user_id)  # frequency_seconds=900
+    alert.mark_run(now=NOW)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        due = uow.alerts.list_due(now=NOW + timedelta(seconds=901))
+
+    assert [a.id for a in due] == [alert.id]
+
+
+def test_list_due_excludes_an_inactive_alert(persistence) -> None:
+    alert = _alert(persistence.user_id)
+    alert.deactivate(now=NOW)
+    with persistence.new_uow() as uow:
+        uow.alerts.add(alert)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        due = uow.alerts.list_due(now=NOW + timedelta(days=1))
+
+    assert due == []
 
 
 def test_rollback_discards_changes(persistence) -> None:

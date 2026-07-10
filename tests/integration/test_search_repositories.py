@@ -31,7 +31,7 @@ from real_estate.domain.model import (
 from real_estate.domain.model.match import AlertMatch
 from real_estate.domain.ports import SearchExecutionStatus
 from real_estate.domain.vocabulary import ListingStatus, ListingType, PropertyType, Province
-from real_estate.infrastructure.persistence.models.orm import PriceHistoryModel
+from real_estate.infrastructure.persistence.models.orm import PriceHistoryModel, UserModel
 
 NOW = datetime(2026, 7, 4, 12, 0)  # naive: SQLite does not persist tz
 
@@ -79,6 +79,47 @@ def test_match_add_if_new_is_idempotent(persistence) -> None:
 
     assert first is not None
     assert second is None
+
+
+def test_match_list_recent_for_user_is_scoped_and_ordered_newest_first(persistence) -> None:
+    alert = _alert(persistence.user_id)
+    prop_a = _property()
+    prop_b = _property()
+    other_user_id = UserId(uuid4())
+    other_user_alert = _alert(other_user_id)
+    other_prop = _property()
+    with persistence.new_uow() as uow:
+        uow._session.add(  # noqa: SLF001
+            UserModel(
+                id=other_user_id,
+                email=f"{other_user_id}@example.test",
+                display_name="Other User",
+                created_at=NOW,
+            )
+        )
+        uow.properties.add(prop_a)
+        uow.properties.add(prop_b)
+        uow.properties.add(other_prop)
+        uow.alerts.add(alert)
+        uow.alerts.add(other_user_alert)
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        uow.matches.add_if_new(AlertMatch(alert_id=alert.id, property_id=prop_a.id, matched_at=NOW))
+        uow.matches.add_if_new(
+            AlertMatch(
+                alert_id=alert.id, property_id=prop_b.id, matched_at=NOW + timedelta(minutes=5)
+            )
+        )
+        uow.matches.add_if_new(
+            AlertMatch(alert_id=other_user_alert.id, property_id=other_prop.id, matched_at=NOW)
+        )
+        uow.commit()
+
+    with persistence.new_uow() as uow:
+        recent = uow.matches.list_recent_for_user(persistence.user_id, limit=10)
+
+    assert [m.property_id for m in recent] == [prop_b.id, prop_a.id]
 
 
 def test_portal_listing_find_unchanged_property_id(persistence) -> None:

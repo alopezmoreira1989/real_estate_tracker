@@ -4,6 +4,7 @@ services:
     environment:
       ENVIRONMENT: dev
       LOG_LEVEL: INFO
+      DATABASE_URL: sqlite:////data/real_estate.db
     volumes:
       - sqlite-data:/data
 
