@@ -112,7 +112,7 @@ def _build_cli(
         clock=clock,
     )
     ctx = CliContext(
-        user_id=persistence.user_id,
+        user_id=lambda: persistence.user_id,
         create_alert=CreateAlert(
             uow_factory=persistence.new_uow, field_registry=field_registry, clock=clock
         ),
@@ -125,6 +125,38 @@ def _build_cli(
         run_scheduler_forever=lambda: None,
     )
     return build_cli_app(ctx)
+
+
+def test_help_never_resolves_user_id(persistence) -> None:
+    """--help must not touch the DB (ensure_default_user) just to print
+    usage — Typer/Click short-circuits before a command body runs, so a lazy
+    ``user_id`` callable should never actually be called here."""
+
+    def poison() -> None:
+        raise AssertionError("user_id was resolved just to print --help")
+
+    runner = CliRunner()
+    field_registry = default_field_registry()
+    ctx = CliContext(
+        user_id=poison,  # type: ignore[arg-type]
+        create_alert=CreateAlert(
+            uow_factory=persistence.new_uow, field_registry=field_registry, clock=_FixedClock(NOW)
+        ),
+        list_alerts=ListAlerts(uow_factory=persistence.new_uow),
+        list_matches=ListMatches(uow_factory=persistence.new_uow),
+        create_channel=CreateChannel(uow_factory=persistence.new_uow),
+        list_channels=ListChannels(uow_factory=persistence.new_uow),
+        planner_tick=None,  # type: ignore[arg-type]
+        dispatch_notifications=None,  # type: ignore[arg-type]
+        run_scheduler_forever=lambda: None,
+    )
+    poisoned_app = build_cli_app(ctx)
+
+    result = runner.invoke(poisoned_app, ["--help"])
+    assert result.exit_code == 0
+
+    result = runner.invoke(poisoned_app, ["alerts", "create", "--help"])
+    assert result.exit_code == 0
 
 
 def test_alerts_create_then_list(persistence) -> None:

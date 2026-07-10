@@ -18,6 +18,7 @@ from real_estate.application.use_cases.list_channels import ListChannels
 from real_estate.application.use_cases.list_matches import ListMatches
 from real_estate.application.use_cases.planner_tick import PlannerTick
 from real_estate.application.use_cases.run_alert_cycle import RunAlertCycle
+from real_estate.domain.model.identifiers import UserId
 from real_estate.domain.ports import Notifier, UnitOfWork
 from real_estate.domain.rules import SpecificationFactory
 from real_estate.domain.rules import default_registry as default_field_registry
@@ -53,7 +54,13 @@ def build_app() -> typer.Typer:
 
     engine = create_db_engine(settings.database_url)
     session_factory = create_session_factory(engine)
-    user_id = ensure_default_user(session_factory, settings.owner_email)
+
+    def resolve_user_id() -> UserId:
+        # Lazy: only actual commands need the DB (Typer/Click's --help
+        # short-circuits before a command body runs, but this whole function
+        # runs before Typer parses argv, so an eager call here would touch
+        # the DB unconditionally on every invocation, including --help).
+        return ensure_default_user(session_factory, settings.owner_email)
 
     def uow_factory() -> UnitOfWork:
         return SqlAlchemyUnitOfWork(
@@ -117,7 +124,7 @@ def build_app() -> typer.Typer:
             scheduler.shutdown()
 
     cli_context = CliContext(
-        user_id=user_id,
+        user_id=resolve_user_id,
         create_alert=create_alert,
         list_alerts=list_alerts,
         list_matches=list_matches,
