@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 import typer
 
-from real_estate.application.dto import DispatchReport, RunAlertCycleReport
+from real_estate.application.dto import DispatchReport, MatchView, RunAlertCycleReport
 from real_estate.application.use_cases.create_alert import CreateAlert
 from real_estate.application.use_cases.create_channel import CreateChannel
 from real_estate.application.use_cases.dispatch_notifications import DispatchNotifications
@@ -111,8 +111,8 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
 
     @app.command("list-matches")
     def list_matches(limit: int = typer.Option(20)) -> None:
-        for match in ctx.list_matches.run(user_id=ctx.user_id(), limit=limit):
-            typer.echo(f"{match.matched_at}  alert={match.alert_id}  property={match.property_id}")
+        for view in ctx.list_matches.run(user_id=ctx.user_id(), limit=limit):
+            typer.echo(_format_match_view(view))
 
     @app.command("run-cycle")
     def run_cycle() -> None:
@@ -128,6 +128,16 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
         ctx.run_scheduler_forever()
 
     return app
+
+
+def _format_match_view(view: MatchView) -> str:
+    prop = view.property
+    title = prop.title if prop is not None else "(property no longer available)"
+    price = f"{prop.price.amount:,.0f} {prop.price.currency.value}" if prop and prop.price else "?"
+    line = f"{view.match.matched_at}  {title}  {price}"
+    if view.listing_url is not None:
+        line += f"  {view.listing_url}"
+    return line
 
 
 def _format_cycle_report(report: RunAlertCycleReport) -> str:

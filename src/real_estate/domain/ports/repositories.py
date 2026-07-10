@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import StrEnum
 from typing import Any, Protocol
 
 from real_estate.domain.model.alert import SearchAlert
@@ -26,6 +25,12 @@ from real_estate.domain.model.match import AlertMatch
 from real_estate.domain.model.notification import Notification
 from real_estate.domain.model.notification_channel import NotificationChannel
 from real_estate.domain.model.property import Property
+
+# Re-exported (not just used internally): domain/ports/__init__.py forwards these so callers can
+# keep importing them from real_estate.domain.ports, as they could when SearchExecutionStatus was
+# defined in this module directly. Explicit `as` alias satisfies mypy strict's no-implicit-reexport.
+from real_estate.domain.model.search_execution import SearchExecution as SearchExecution
+from real_estate.domain.model.search_execution import SearchExecutionStatus as SearchExecutionStatus
 
 
 class AlertRepository(Protocol):
@@ -175,14 +180,6 @@ class NotificationRepository(Protocol):
         ...
 
 
-class SearchExecutionStatus(StrEnum):
-    """Outcome of one scrape attempt for one query signature (doc03)."""
-
-    SUCCESS = "SUCCESS"
-    PARTIAL = "PARTIAL"
-    FAILED = "FAILED"
-
-
 class SearchExecutionRepository(Protocol):
     """Audit trail of scrape attempts — one row per attempt, success or failure."""
 
@@ -194,10 +191,17 @@ class SearchExecutionRepository(Protocol):
         status: SearchExecutionStatus,
         listings_found: int,
         listings_new: int,
+        normalization_issues: int,
         error: str | None,
         started_at: datetime,
         finished_at: datetime,
     ) -> None: ...
+
+    def list_recent(self, limit: int) -> Sequence[SearchExecution]:
+        """Most recent scrape attempts across every portal, newest first —
+        the data source for the dashboard's execution-health view (doc05 §6).
+        """
+        ...
 
 
 class SearchCacheRepository(Protocol):

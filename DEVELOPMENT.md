@@ -67,12 +67,45 @@ pytest --cov-report=html  # HTML coverage report -> htmlcov/index.html
 pytest tests/unit/path/to/test_file.py::test_name   # run a single test
 ```
 
+## Running the Streamlit dashboard
+
+The dashboard (`src/real_estate/presentation/web/app.py`, bootstrapped by
+`src/real_estate/dashboard.py`) is the **manual-verification surface for `dev_alm`** before any
+merge to `main` (CLAUDE.md §9) — from Phase 8 on, "run the dashboard and look at it" is a real step,
+not an aspirational one. It calls the exact same application use-cases as the CLI, so what you see
+there is what the platform actually does.
+
+```bash
+alembic upgrade head                              # schema must exist first
+streamlit run src/real_estate/dashboard.py         # opens http://localhost:8501
+```
+
+Or use the helper script, which does both:
+
+```bash
+scripts/run_dashboard.sh
+```
+
+**The `dev_alm → main` verification flow:**
+
+1. Land your work on `dev_alm` (issue-by-issue commits, full quality gate green on each).
+2. Run the dashboard (`scripts/run_dashboard.sh` or the two commands above) against a local DB —
+   seed it via the CLI (`python -m real_estate alerts create ...`) or `python -m real_estate
+   run-cycle` if you want a real scrape.
+3. Walk through what changed: create/edit an alert, check Matches shows real data, check Health
+   shows the expected execution/issue counts, check Channels. A blank or erroring tab is a sign
+   something regressed even if the test suite is green — this is *whole-system* eyeballing, not a
+   substitute for the automated gate.
+4. Only once it looks right, open the `dev_alm → main` PR (CI green) and merge.
+
 ## Docker
 
 ```bash
 docker build -t real-estate .
 docker compose build
-docker compose run --rm app          # one-shot run (mirrors CI's smoke test)
+docker compose up -d app             # starts the scheduler daemon (mirrors CI's smoke test)
+docker compose logs app              # check it came up cleanly
+docker compose down                  # stop it
 docker compose config                # validate the compose file without running anything
 ```
 

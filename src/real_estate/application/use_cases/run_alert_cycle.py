@@ -39,6 +39,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any
 
+import structlog
+
 from real_estate.application.dto import PlannedQuery, RunAlertCycleReport
 from real_estate.application.ports import Clock
 from real_estate.application.services.search_planner import SearchPlanner
@@ -48,6 +50,8 @@ from real_estate.domain.model.property import Property
 from real_estate.domain.ports import Normalizer, Scraper, SearchExecutionStatus, UnitOfWork
 from real_estate.domain.ports.scraper import ScraperError
 from real_estate.domain.services.alert_engine import AlertEngine
+
+_logger = structlog.get_logger(__name__)
 
 
 class RunAlertCycle:
@@ -132,6 +136,7 @@ class RunAlertCycle:
                     status=SearchExecutionStatus.FAILED,
                     listings_found=0,
                     listings_new=0,
+                    normalization_issues=0,
                     error=str(exc),
                     started_at=now,
                     finished_at=self._clock.now(),
@@ -159,6 +164,7 @@ class RunAlertCycle:
         normalizer = self._normalizer_for_portal(planned.portal_slug)
         property_ids: list[PropertyId] = []
         listings_new = 0
+        normalization_issues = 0
         for raw in raw_listings:
             content_hash = _content_hash(raw.raw)
             unchanged_id = uow.portal_listings.find_unchanged_property_id(
@@ -169,6 +175,16 @@ class RunAlertCycle:
                 continue
 
             result = normalizer.normalize(raw)
+            normalization_issues += len(result.issues)
+            for issue in result.issues:
+                _logger.warning(
+                    "normalization_issue",
+                    portal_slug=raw.portal_slug,
+                    external_id=raw.external_id,
+                    field=issue.field,
+                    message=issue.message,
+                    raw_value=issue.raw_value,
+                )
             if result.property is None:
                 continue  # normalization fatally failed; skip this listing only
 
@@ -198,6 +214,7 @@ class RunAlertCycle:
             status=SearchExecutionStatus.SUCCESS,
             listings_found=len(raw_listings),
             listings_new=listings_new,
+            normalization_issues=normalization_issues,
             error=None,
             started_at=now,
             finished_at=self._clock.now(),
