@@ -11,6 +11,16 @@ from types import TracebackType
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from real_estate.domain.ports.repositories import (
+    AlertRepository,
+    MatchRepository,
+    NotificationChannelRepository,
+    NotificationRepository,
+    PortalListingRepository,
+    PropertyRepository,
+    SearchCacheRepository,
+    SearchExecutionRepository,
+)
 from real_estate.infrastructure.persistence.repositories.alert_repository import (
     SqlAlchemyAlertRepository,
 )
@@ -38,16 +48,24 @@ from real_estate.infrastructure.persistence.repositories.search_execution_reposi
 
 
 class SqlAlchemyUnitOfWork:
-    """A single atomic transaction exposing the repositories it governs."""
+    """A single atomic transaction exposing the repositories it governs.
 
-    alerts: SqlAlchemyAlertRepository
-    properties: SqlAlchemyPropertyRepository
-    matches: SqlAlchemyMatchRepository
-    portal_listings: SqlAlchemyPortalListingRepository
-    search_cache: SqlAlchemySearchCacheRepository
-    search_executions: SqlAlchemySearchExecutionRepository
-    notification_channels: SqlAlchemyNotificationChannelRepository
-    notifications: SqlAlchemyNotificationRepository
+    Attributes are typed as the domain **port** (not the concrete adapter) so
+    this class structurally satisfies :class:`~real_estate.domain.ports.
+    UnitOfWork` under mypy strict — Protocol attributes are matched
+    invariantly (they're read-write), so declaring the concrete repository
+    type here would make ``SqlAlchemyUnitOfWork`` fail that structural check
+    even though each concrete repository does implement its port.
+    """
+
+    alerts: AlertRepository
+    properties: PropertyRepository
+    matches: MatchRepository
+    portal_listings: PortalListingRepository
+    search_cache: SearchCacheRepository
+    search_executions: SearchExecutionRepository
+    notification_channels: NotificationChannelRepository
+    notifications: NotificationRepository
 
     def __init__(
         self, session_factory: sessionmaker[Session], *, encryption_key: str | None = None

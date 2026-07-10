@@ -66,6 +66,11 @@ select = ["E", "F", "I", "UP", "B", "SIM", "N"]
 [tool.ruff.lint.isort]
 known-first-party = ["real_estate"]
 
+[tool.ruff.lint.per-file-ignores]
+# B008 (no function calls in argument defaults) is a false positive for Typer's own idiom —
+# `typer.Option(...)` as a parameter default is how Typer declares CLI options.
+"src/real_estate/presentation/cli/*.py" = ["B008"]
+
 # ---------------------------------------------------------------------------
 # Format (black) — authoritative; do not hand-format around it (CLAUDE.md §4).
 # ---------------------------------------------------------------------------

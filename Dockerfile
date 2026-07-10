@@ -17,4 +17,4 @@ WORKDIR /app
 
 USER appuser
 
-CMD ["python", "-m", "real_estate"]
+CMD ["python", "-m", "real_estate", "serve"]
