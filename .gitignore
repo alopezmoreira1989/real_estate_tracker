@@ -14,5 +14,10 @@ coverage.xml
 dist/
 build/
 
+# Local SQLite dev DBs (default_url in settings.py points at one; the dashboard/CLI create one
+# on first run) — never a fixture, always machine-local.
+*.db
+*.db-journal
+
 # Local Claude Code state (settings.local.json, task locks) — not shared config
 .claude/
