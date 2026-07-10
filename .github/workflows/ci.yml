@@ -66,6 +66,18 @@ jobs:
         run: docker compose config
 
       - name: Run app container via compose
-        # Exercises the same path a developer runs locally (README "Running with Docker") — the
-        # placeholder entrypoint logs one line and exits 0; a non-zero exit fails this step.
-        run: docker compose run --rm app
+        # `serve` (Phase 7) is a long-running scheduler daemon — it never exits on its own, so
+        # unlike a one-shot command this starts it in the background, gives it a few seconds to
+        # prove it doesn't crash on startup (DB connection, migrations, scheduler wiring), then
+        # tears down. An early container exit fails this step.
+        run: |
+          docker compose up -d app
+          sleep 5
+          state="$(docker compose ps -q app | xargs docker inspect -f '{{.State.Running}}')"
+          if [ "$state" != "true" ]; then
+            echo "app container exited early"
+            docker compose logs app
+            exit 1
+          fi
+          docker compose logs app
+          docker compose down
