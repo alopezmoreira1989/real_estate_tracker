@@ -3,15 +3,14 @@
 
 ``build_dependencies()`` does all the wiring once, framework-agnostic; both presentation surfaces
 consume the exact same use-case instances from it — literally "runs against the same application
-layer" (issue #35):
+layer" (issue #35). Each presentation surface defines its own context type (``CliContext`` in
+``presentation/cli/app.py``, ``DashboardContext`` in ``presentation/web/app.py``) and *this* module
+builds and injects it — never the reverse, so neither presentation module ever imports
+``real_estate.composition`` or (transitively) ``real_estate.infrastructure``:
 
-- ``build_app()`` (Typer/CLI) wraps it in a ``CliContext``.
-- ``presentation/web/app.py`` (Streamlit) calls it directly. Streamlit's own script *is* the
-  process entry point (``streamlit run ...``) — there is no ``__main__.py``-equivalent caller it
-  will accept — so that module importing ``real_estate.composition`` is a framework-forced
-  exception to the pattern the CLI follows (composition imports presentation, not the reverse).
-  It still satisfies the enforced import-linter contract, which forbids presentation importing
-  ``real_estate.infrastructure``, not ``real_estate.composition``.
+- ``build_app()`` returns the runnable Typer app.
+- ``run_dashboard()`` is what ``dashboard.py`` (Streamlit's actual entry point — its execution
+  model requires a literal runnable script, unlike Typer) calls.
 """
 
 from __future__ import annotations
@@ -184,3 +183,31 @@ def build_app() -> typer.Typer:
         run_scheduler_forever=deps.run_scheduler_forever,
     )
     return build_cli_app(cli_context)
+
+
+def run_dashboard() -> None:
+    """Wire everything and render the Streamlit dashboard (dashboard.py's entry point).
+
+    Streamlit is imported locally, not at module level, so the CLI's startup path never pays for
+    it — ``composition.py`` is shared by both entry points.
+    """
+    import streamlit as st
+
+    from real_estate.presentation.web.app import DashboardContext, render
+
+    @st.cache_resource
+    def _cached_dependencies() -> Dependencies:
+        return build_dependencies()
+
+    deps = _cached_dependencies()
+    dashboard_context = DashboardContext(
+        user_id=deps.user_id,
+        create_alert=deps.create_alert,
+        update_alert=deps.update_alert,
+        list_alerts=deps.list_alerts,
+        list_matches=deps.list_matches,
+        create_channel=deps.create_channel,
+        list_channels=deps.list_channels,
+        list_search_executions=deps.list_search_executions,
+    )
+    render(dashboard_context)
