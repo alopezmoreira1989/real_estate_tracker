@@ -30,9 +30,16 @@ from real_estate.domain.model.notification_channel import ChannelType
 
 @dataclass(frozen=True, slots=True)
 class CliContext:
-    """Every dependency the CLI needs, built once by composition.py."""
+    """Every dependency the CLI needs, built once by composition.py.
 
-    user_id: UserId
+    ``user_id`` is a callable, not a resolved value: resolving it touches the
+    DB (``ensure_default_user``), which must not happen just to print
+    ``--help`` — Typer/Click short-circuits before a command body runs, but
+    composition.py builds this context before Typer even parses argv, so an
+    eager DB call here would run unconditionally on every invocation.
+    """
+
+    user_id: Callable[[], UserId]
     create_alert: CreateAlert
     list_alerts: ListAlerts
     list_matches: ListMatches
@@ -65,7 +72,7 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
         ),
     ) -> None:
         alert = ctx.create_alert.run(
-            user_id=ctx.user_id,
+            user_id=ctx.user_id(),
             name=name,
             portal_slugs=frozenset({"idealista"}),
             frequency_seconds=frequency_seconds,
@@ -80,7 +87,7 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
 
     @alerts_app.command("list")
     def alerts_list() -> None:
-        for alert in ctx.list_alerts.run(user_id=ctx.user_id):
+        for alert in ctx.list_alerts.run(user_id=ctx.user_id()):
             status = "active" if alert.is_active else "inactive"
             typer.echo(f"{alert.id}  {alert.name!r}  [{status}]  every {alert.frequency_seconds}s")
 
@@ -90,7 +97,7 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
         channel_type: str = typer.Option("TELEGRAM"),
     ) -> None:
         channel = ctx.create_channel.run(
-            user_id=ctx.user_id,
+            user_id=ctx.user_id(),
             channel_type=ChannelType(channel_type.upper()),
             target=target,
         )
@@ -98,13 +105,13 @@ def build_cli_app(ctx: CliContext) -> typer.Typer:
 
     @channels_app.command("list")
     def channels_list() -> None:
-        for channel in ctx.list_channels.run(user_id=ctx.user_id):
+        for channel in ctx.list_channels.run(user_id=ctx.user_id()):
             status = "enabled" if channel.is_enabled else "disabled"
             typer.echo(f"{channel.id}  {channel.channel_type.value}  {channel.target}  [{status}]")
 
     @app.command("list-matches")
     def list_matches(limit: int = typer.Option(20)) -> None:
-        for match in ctx.list_matches.run(user_id=ctx.user_id, limit=limit):
+        for match in ctx.list_matches.run(user_id=ctx.user_id(), limit=limit):
             typer.echo(f"{match.matched_at}  alert={match.alert_id}  property={match.property_id}")
 
     @app.command("run-cycle")
